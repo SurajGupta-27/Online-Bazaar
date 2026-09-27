@@ -1,0 +1,121 @@
+.site-main {
+	min-height: 70vh;
+	background: linear-gradient(180deg, #fffaf3 0%, #ffffff 26rem);
+}
+
+.brand-lockup {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.65rem;
+	color: #14213d !important;
+	letter-spacing: 0.02em;
+	text-transform: none;
+}
+
+.brand-mark {
+	display: grid;
+	width: 2rem;
+	height: 2rem;
+	place-items: center;
+	border-radius: 0.65rem;
+	background: #ef8354;
+	color: #fffaf3;
+	font-family: "Playfair Display", serif;
+	font-size: 1.25rem;
+	line-height: 1;
+}
+
+.product-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 1.25rem;
+}
+
+.product-card,
+.card {
+	overflow: hidden;
+	border: 1px solid #eadfd2;
+	border-radius: 0.75rem;
+	background: #ffffff;
+	box-shadow: 0 0.75rem 2rem rgba(20, 33, 61, 0.07);
+	transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.product-card:hover,
+.card:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 1rem 2.5rem rgba(20, 33, 61, 0.12);
+}
+
+.product-card img,
+.card-img-top {
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	background: #f3eee7;
+}
+
+.product-card .card-body,
+.card .card-body {
+	padding: 1rem;
+}
+
+.product-card .btn,
+.card .btn {
+	min-height: 2.75rem;
+	margin-top: 0.35rem;
+	border-radius: 0.5rem;
+	font-size: 0.76rem;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+}
+
+.btn-primary {
+	border-color: #14213d;
+	background: #14213d;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+	border-color: #0d172b;
+	background: #0d172b;
+}
+
+.btn-secondary {
+	border-color: #ef8354;
+	background: #ef8354;
+	color: #fff;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+	border-color: #d9673d;
+	background: #d9673d;
+	color: #fff;
+}
+
+.section-heading {
+	color: #14213d;
+	font-family: "Playfair Display", serif;
+}
+
+@media (max-width: 991px) {
+	.navbar-collapse {
+		padding: 1rem 0;
+	}
+
+	.navbar-nav {
+		gap: 0.25rem;
+	}
+}
+
+@media (max-width: 576px) {
+	.product-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.product-card .btn,
+	.card .btn {
+		width: 100%;
+		margin: 0.35rem 0 0;
+	}
+}
