@@ -34,7 +34,8 @@ const UpdateProduct = () => {
       setQuantity(data.product.quantity);
       // The Select's option values are "1" (Yes) and "0" (No).
       setShipping(data.product.shipping ? "1" : "0");
-      setCategory(data.product.category._id);
+      // Products whose category was deleted have none; the admin must pick one.
+      setCategory(data.product.category?._id || undefined);
     } catch (error) {
       console.log(error);
     }

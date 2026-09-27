@@ -43,5 +43,5 @@ await withServer(async ({ api, db, base }) => {
   const badText = await badJson.text();
   check("malformed JSON -> 400 generic message, no stack", badJson.status === 400 && !/at |SyntaxError/.test(badText), `${badJson.status} ${badText}`);
   const del = await api("DELETE", "/api/v1/category/delete-category/nope", null, { token });
-  check("category error hides details", del.status === 500 && !("error" in del.json), del.text);
+  check("category error hides details", del.status === 404 && !("error" in del.json), del.text);
 });

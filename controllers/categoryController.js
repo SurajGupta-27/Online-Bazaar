@@ -1,4 +1,5 @@
 import categoryModel from "../models/categoryModel.js";
+import productModel from "../models/productModel.js";
 import slugify from "slugify";
 import mongoose from "mongoose";
 export const createCategoryController = async (req, res) => {
@@ -112,10 +113,24 @@ export const singleCategoryController = async (req, res) => {
 export const deleteCategoryCOntroller = async (req, res) => {
   try {
     const { id } = req.params;
-    await categoryModel.findByIdAndDelete(id);
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).send({ success: false, message: "Category not found" });
+    }
+    // Deleting a category that products still use would leave them orphaned.
+    const productCount = await productModel.countDocuments({ category: id });
+    if (productCount > 0) {
+      return res.status(409).send({
+        success: false,
+        message: `This category still has ${productCount} product${productCount === 1 ? "" : "s"}. Move or delete them first.`,
+      });
+    }
+    const deleted = await categoryModel.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).send({ success: false, message: "Category not found" });
+    }
     res.status(200).send({
       success: true,
-      message: "Categry Deleted Successfully",
+      message: "Category Deleted Successfully",
     });
   } catch (error) {
     console.log(error);

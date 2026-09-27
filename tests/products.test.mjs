@@ -81,3 +81,20 @@ await withServer(async ({ api, db }) => {
   const c6 = await upCat(other.json.category._id, { name: "Toys" });
   check("saving a category with its own name is not a duplicate", c6.status === 200, c6.text);
 });
+
+// #13: a category that products still use can't be deleted
+await withServer(async ({ api, db }) => {
+  const { token, categoryId } = await adminSetup(api, db);
+  const del = (id) => api("DELETE", `/api/v1/category/delete-category/${id}`, null, { token });
+  const p = await api("POST", "/api/v1/product/create-product",
+    form({ name: "Pen", description: "d", price: "1", quantity: "1", category: categoryId }), { token });
+  const blocked = await del(categoryId);
+  check("delete category in use -> 409 with count", blocked.status === 409 && /still has 1 product\./.test(blocked.json.message), blocked.text);
+  check("category still exists", (await db.collection("categories").countDocuments()) === 1);
+
+  await api("DELETE", `/api/v1/product/delete-product/${p.json.products._id}`, null, { token });
+  const ok = await del(categoryId);
+  check("delete empty category -> 200", ok.status === 200 && ok.json.message === "Category Deleted Successfully", ok.text);
+  const again = await del(categoryId);
+  check("delete missing category -> 404", again.status === 404, again.text);
+});

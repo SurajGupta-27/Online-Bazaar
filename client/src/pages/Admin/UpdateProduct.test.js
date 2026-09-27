@@ -13,14 +13,14 @@ jest.mock("axios", () => ({
   interceptors: { response: { use: jest.fn(), eject: jest.fn() } },
 }));
 
-const renderWithShipping = (shipping) => {
+const renderWithShipping = (shipping, category = { _id: "c1", name: "Office" }) => {
   axios.get.mockImplementation((url) => {
     if (url === "/api/v1/product/get-product/pen") {
       return Promise.resolve({
         data: {
           product: {
             _id: "p1", name: "Pen", description: "Blue", price: 2, quantity: 5,
-            shipping, category: { _id: "c1", name: "Office" },
+            shipping, category,
           },
         },
       });
@@ -60,4 +60,10 @@ test.each([
   const body = axios.put.mock.calls[0][1];
   expect(body.get("shipping")).toBe(sent);
   expect(await screen.findByText("Products list")).toBeInTheDocument();
+});
+
+test("a product whose category was deleted still loads for editing", async () => {
+  renderWithShipping(true, null);
+  expect(await screen.findByDisplayValue("Pen")).toBeInTheDocument();
+  expect(screen.getByText("Select a category")).toBeInTheDocument();
 });
