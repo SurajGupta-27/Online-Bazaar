@@ -4,10 +4,12 @@ import axios from "axios";
 import AdminRoute from "./AdminRoute";
 import PrivateRoute from "./Private";
 import { AuthProvider } from "../../context/auth";
+import { fakeToken } from "../../testUtils/fakeToken";
 
 jest.mock("axios", () => ({
   get: jest.fn(),
   defaults: { headers: { common: {} } },
+  interceptors: { response: { use: jest.fn(), eject: jest.fn() } },
 }));
 
 const unhandled = [];
@@ -20,7 +22,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   localStorage.setItem(
     "auth",
-    JSON.stringify({ user: { name: "Sam", role: 0 }, token: "some-token" })
+    JSON.stringify({ user: { name: "Sam", role: 0 }, token: fakeToken() })
   );
 });
 afterEach(() => {

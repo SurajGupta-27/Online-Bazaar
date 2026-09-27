@@ -36,7 +36,8 @@ export const isAdmin = async (req, res, next) => {
       });
     }
     if (user.role !== 1) {
-      return res.status(401).send({
+      // 403, not 401: the user is signed in, just not allowed here.
+      return res.status(403).send({
         success: false,
         message: "UnAuthorized Access",
       });

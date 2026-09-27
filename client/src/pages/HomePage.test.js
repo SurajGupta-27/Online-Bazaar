@@ -10,6 +10,7 @@ jest.mock("axios", () => ({
   get: jest.fn(),
   post: jest.fn(),
   defaults: { headers: { common: {} } },
+  interceptors: { response: { use: jest.fn(), eject: jest.fn() } },
 }));
 
 const product = (id, name) => ({

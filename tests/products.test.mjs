@@ -44,4 +44,13 @@ await withServer(async ({ api, db }) => {
   check("blank category name -> 400", blank.status === 400 && blank.json.message === "Name is required", blank.text);
   const dup = await api("POST", "/api/v1/category/create-category", { name: "Books" }, { token });
   check("duplicate category -> 409", dup.status === 409 && dup.json.message === "Category already exists", dup.text);
+
+  // Signed-in non-admins get 403 (not 401, which the client treats as an expired session)
+  await api("POST", "/api/v1/auth/register", { name: "U", email: "u@x.com", password: "secret1", phone: "1", address: "a", answer: "a" });
+  const user = await api("POST", "/api/v1/auth/login", { email: "u@x.com", password: "secret1" });
+  const denied = await api("POST", "/api/v1/category/create-category", { name: "Toys" }, { token: user.json.token });
+  const adminCheck = await api("GET", "/api/v1/auth/admin-auth", null, { token: user.json.token });
+  check("non-admin gets 403 on admin routes", denied.status === 403 && adminCheck.status === 403, `${denied.status} ${adminCheck.status}`);
+  const expired = await api("GET", "/api/v1/auth/user-auth", null, { token: "garbage" });
+  check("invalid token still gets 401", expired.status === 401);
 });
