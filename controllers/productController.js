@@ -2,6 +2,7 @@ import productModel from "../models/productModel.js";
 import categoryModel from "../models/categoryModel.js";
 import fs from "fs";
 import slugify from "slugify";
+import { escapeRegex } from "../helpers/escapeRegex.js";
 
 export const createProductController = async (req, res) => {
   try {
@@ -254,12 +255,13 @@ export const productListController = async (req, res) => {
 // search product
 export const searchProductController = async (req, res) => {
   try {
-    const { keyword } = req.params;
+    const keyword = req.params.keyword.trim().slice(0, 100);
+    const pattern = escapeRegex(keyword);
     const resutls = await productModel
       .find({
         $or: [
-          { name: { $regex: keyword, $options: "i" } },
-          { description: { $regex: keyword, $options: "i" } },
+          { name: { $regex: pattern, $options: "i" } },
+          { description: { $regex: pattern, $options: "i" } },
         ],
       })
       .select("-photo");
