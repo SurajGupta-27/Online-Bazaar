@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 
@@ -14,41 +15,82 @@ export const createOrderController = async (req, res) => {
       });
     }
 
-    const products = await productModel.find({
-      _id: { $in: items.map((item) => item.product) },
-    });
-    const productMap = new Map(products.map((product) => [String(product._id), product]));
-    const orderItems = items.map((item) => {
-      const product = productMap.get(String(item.product));
-      if (!product) throw new Error("One or more products are no longer available");
-      const quantity = Math.max(1, Number(item.quantity) || 1);
-      if (product.quantity < quantity) {
-        throw new Error(`${product.name} does not have enough stock`);
+    // Merge duplicate lines so each product's stock is checked once, in total.
+    const requested = new Map();
+    for (const item of items) {
+      if (!mongoose.isValidObjectId(item?.product)) {
+        return res.status(400).send({ success: false, message: "Invalid product in cart" });
       }
-      return { product: product._id, name: product.name, price: product.price, quantity };
-    });
+      const quantity = Math.max(1, Math.floor(Number(item.quantity)) || 1);
+      const id = String(item.product);
+      requested.set(id, (requested.get(id) || 0) + quantity);
+    }
 
-    const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const order = await orderModel.create({
-      user: req.user._id,
-      items: orderItems,
-      total,
-      shippingAddress,
-    });
+    const products = await productModel
+      .find({ _id: { $in: [...requested.keys()] } })
+      .select("-photo");
+    if (products.length !== requested.size) {
+      return res.status(400).send({
+        success: false,
+        message: "One or more products are no longer available",
+      });
+    }
+    const orderItems = products.map((product) => ({
+      product: product._id,
+      name: product.name,
+      price: product.price,
+      quantity: requested.get(String(product._id)),
+    }));
 
-    await Promise.all(
-      orderItems.map((item) =>
-        productModel.findByIdAndUpdate(item.product, {
-          $inc: { quantity: -item.quantity },
-        })
-      )
-    );
+    // Reserve stock with one conditional update per product, so two orders
+    // can never both take the last unit. On any failure, return what was taken.
+    const reserved = [];
+    const releaseReserved = () =>
+      Promise.all(
+        reserved.map((item) =>
+          productModel.updateOne(
+            { _id: item.product },
+            { $inc: { quantity: item.quantity } }
+          )
+        )
+      );
+
+    let order;
+    try {
+      for (const item of orderItems) {
+        const updated = await productModel.findOneAndUpdate(
+          { _id: item.product, quantity: { $gte: item.quantity } },
+          { $inc: { quantity: -item.quantity } },
+          { projection: { _id: 1 } }
+        );
+        if (!updated) {
+          await releaseReserved();
+          return res.status(409).send({
+            success: false,
+            message: `${item.name} does not have enough stock`,
+          });
+        }
+        reserved.push(item);
+      }
+
+      const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      order = await orderModel.create({
+        user: req.user._id,
+        items: orderItems,
+        total,
+        shippingAddress,
+      });
+    } catch (error) {
+      await releaseReserved();
+      throw error;
+    }
 
     return res.status(201).send({ success: true, message: "Order placed", order });
   } catch (error) {
-    return res.status(400).send({
+    console.log(error);
+    return res.status(500).send({
       success: false,
-      message: error.message || "Unable to place order",
+      message: "Unable to place order",
     });
   }
 };
