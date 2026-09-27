@@ -19,6 +19,10 @@ connectDB();
 //rest object
 const app = express();
 
+// Trust X-Forwarded-For only from a local proxy (the React dev server), so rate
+// limits apply per real client IP. Adjust if deploying behind a remote proxy.
+app.set("trust proxy", "loopback");
+
 //middelwares
 app.use(cors());
 app.use(express.json());

@@ -1,8 +1,12 @@
 import userModel from "../models/userModel.js";
-import { comparePassword, hashPassword } from "./../helpers/authHelper.js";
+import {
+  comparePassword,
+  DUMMY_HASH,
+  hashPassword,
+  isBcryptHash,
+  normalizeAnswer,
+} from "./../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
-
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Only these fields are ever sent to (and stored by) the browser.
 const publicUser = (user) => ({
@@ -44,7 +48,7 @@ export const registerController = async (req, res) => {
     email = email.trim().toLowerCase();
     phone = phone.trim();
     address = address.trim();
-    answer = answer.trim();
+    answer = normalizeAnswer(answer);
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -55,13 +59,14 @@ export const registerController = async (req, res) => {
     }
 
     const hashedPassword = await hashPassword(password);
+    const hashedAnswer = await hashPassword(answer);
     const user = await new userModel({
       name,
       email,
       phone,
       address,
       password: hashedPassword,
-      answer,
+      answer: hashedAnswer,
     }).save();
 
     res.status(201).send({
@@ -93,19 +98,19 @@ export const loginController = async (req, res) => {
     email = email.trim().toLowerCase();
     const user = await userModel.findOne({ email });
 
-    if (!user) {
-      return res.status(404).send({
-        success: false,
-        message: "Email is not registered",
-      });
-    }
-
-    const match = await comparePassword(password, user.password);
-    if (!match) {
+    // Same status, message and timing whether or not the email exists.
+    const match = await comparePassword(password, user?.password || DUMMY_HASH);
+    if (!user || !match) {
       return res.status(401).send({
         success: false,
         message: "Invalid email or password",
       });
+    }
+
+    // Upgrade security answers saved in plain text before they were hashed.
+    if (!isBcryptHash(user.answer)) {
+      user.answer = await hashPassword(normalizeAnswer(user.answer));
+      await user.save();
     }
 
     const token = JWT.sign({ _id: user._id }, process.env.JWT_SECRET, {
@@ -145,28 +150,26 @@ export const forgotPasswordController = async (req, res) => {
       return res.status(400).send({ success: false, message: "Password must be at least 6 characters" });
     }
 
-    const normalizedEmail = email.trim();
-    const normalizedAnswer = answer.trim();
+    const normalizedAnswer = normalizeAnswer(answer);
+    const user = await userModel.findOne({ email: email.trim().toLowerCase() });
 
-    // Exact values, but case-insensitive so "Cricket" and "cricket" both work.
-    const user = await userModel.findOne({
-      email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
-      answer: { $regex: `^${escapeRegex(normalizedAnswer)}$`, $options: "i" },
-    });
+    // Accounts created before answers were hashed still hold plain text;
+    // those are compared directly and upgraded to a hash below.
+    const legacyAnswer = user && !isBcryptHash(user.answer);
+    const answerMatches = legacyAnswer
+      ? normalizeAnswer(user.answer) === normalizedAnswer
+      : await comparePassword(normalizedAnswer, user?.answer || DUMMY_HASH);
 
-    if (!user) {
-      return res.status(404).send({
+    if (!user || !answerMatches) {
+      return res.status(400).send({
         success: false,
         message: "Wrong email or security answer",
       });
     }
 
-    const hashed = await hashPassword(newPassword);
-    await userModel.findByIdAndUpdate(
-      user._id,
-      { password: hashed },
-      { new: true, runValidators: true }
-    );
+    const update = { password: await hashPassword(newPassword) };
+    if (legacyAnswer) update.answer = await hashPassword(normalizedAnswer);
+    await userModel.findByIdAndUpdate(user._id, update, { runValidators: true });
 
     res.status(200).send({
       success: true,

@@ -7,6 +7,10 @@ import {
   updateProfileController
 } from "../controllers/authController.js";
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
+import {
+  forgotPasswordLimiter,
+  loginLimiter,
+} from "../middlewares/rateLimiters.js";
 
 //router object
 const router = express.Router();
@@ -16,10 +20,10 @@ const router = express.Router();
 router.post("/register", registerController);
 
 //LOGIN || POST
-router.post("/login", loginController);
+router.post("/login", loginLimiter, loginController);
 
 //Forgot Password || POST
-router.post("/forgot-password", forgotPasswordController);
+router.post("/forgot-password", forgotPasswordLimiter, forgotPasswordController);
 
 //test routes
 router.get("/test", requireSignIn, isAdmin, testController);
