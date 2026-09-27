@@ -1,20 +1,23 @@
 import React from "react";
 import Layout from "./../components/Layout/Layout";
-import { useCart } from "../context/cart";
+import { useCart, cartQuantity, maxCartQuantity } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 const CartPage = () => {
   const [auth] = useAuth();
-  const [cart, setCart, , removeFromCart] = useCart();
+  const [cart, setCart, , removeFromCart, updateQuantity] = useCart();
   const navigate = useNavigate();
   const [placingOrder, setPlacingOrder] = React.useState(false);
 
   //total price
   const totalPrice = () => {
     try {
-      const total = cart?.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      const total = cart?.reduce(
+        (sum, item) => sum + Number(item.price || 0) * cartQuantity(item),
+        0
+      );
       return total.toLocaleString("en-US", {
         style: "currency",
         currency: "USD",
@@ -37,7 +40,10 @@ const CartPage = () => {
       setPlacingOrder(true);
       await axios.post("/api/v1/order/create-order", {
         shippingAddress: auth.user.address,
-        items: cart.map((item) => ({ product: item._id, quantity: 1 })),
+        items: cart.map((item) => ({
+          product: item._id,
+          quantity: cartQuantity(item),
+        })),
       });
       setCart([]);
       localStorage.removeItem("cart");
@@ -59,7 +65,7 @@ const CartPage = () => {
             </h1>
             <h4 className="text-center">
               {cart?.length
-                ? `You Have ${cart.length} items in your cart ${
+                ? `You Have ${cart.reduce((sum, item) => sum + cartQuantity(item), 0)} items in your cart ${
                     auth?.token ? "" : "please login to checkout"
                   }`
                 : " Your Cart Is Empty"}
@@ -83,6 +89,23 @@ const CartPage = () => {
                   <p>{p.name}</p>
                   <p>{p.description.substring(0, 30)}</p>
                   <p>Price : {p.price}</p>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <label htmlFor={`qty-${p._id}`}>Quantity :</label>
+                    <select
+                      id={`qty-${p._id}`}
+                      className="form-select w-auto"
+                      value={cartQuantity(p)}
+                      onChange={(e) => updateQuantity(p._id, e.target.value)}
+                    >
+                      {Array.from({ length: maxCartQuantity(p) }, (_, i) => i + 1).map(
+                        (n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
                   <button
                     className="btn btn-danger"
                     onClick={() => removeCartItem(p._id)}
