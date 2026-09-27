@@ -36,7 +36,17 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    // Never serialize secrets, even if a controller sends a whole user document.
+    toJSON: {
+      transform: (doc, ret) => {
+        delete ret.password;
+        delete ret.answer;
+        return ret;
+      },
+    },
+  }
 );
 
 export default mongoose.model("users", userSchema);

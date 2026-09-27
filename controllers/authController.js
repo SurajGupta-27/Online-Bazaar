@@ -4,6 +4,16 @@ import JWT from "jsonwebtoken";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Only these fields are ever sent to (and stored by) the browser.
+const publicUser = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  address: user.address,
+  role: user.role,
+});
+
 export const registerController = async (req, res) => {
   try {
     let { name, email, password, phone, address, answer } = req.body;
@@ -57,7 +67,7 @@ export const registerController = async (req, res) => {
     res.status(201).send({
       success: true,
       message: "User Registered Successfully",
-      user,
+      user: publicUser(user),
     });
   } catch (error) {
     console.log(error);
@@ -105,14 +115,7 @@ export const loginController = async (req, res) => {
     res.status(200).send({
       success: true,
       message: "Login successfully",
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        role: user.role,
-      },
+      user: publicUser(user),
       token,
     });
   } catch (error) {
@@ -220,7 +223,7 @@ export const updateProfileController = async (req, res) => {
     res.status(200).send({
       success: true,
       message: "Profile Updated Successfully",
-      updatedUser,
+      updatedUser: publicUser(updatedUser),
     });
   } catch (error) {
     console.log(error);

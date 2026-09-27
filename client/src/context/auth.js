@@ -15,6 +15,14 @@ const AuthProvider = ({ children }) => {
     const data = localStorage.getItem("auth");
     if (data) {
       const parseData = JSON.parse(data);
+      // Older builds stored the password hash and security answer; purge them.
+      if (parseData.user) {
+        const { password, answer, ...safeUser } = parseData.user;
+        if (password !== undefined || answer !== undefined) {
+          parseData.user = safeUser;
+          localStorage.setItem("auth", JSON.stringify(parseData));
+        }
+      }
       setAuth({
         ...auth,
         user: parseData.user,
