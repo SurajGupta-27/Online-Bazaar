@@ -161,6 +161,9 @@ export const deleteProductController = async (req, res) => {
 export const updateProductController = async (req, res) => {
   try {
     const photo = req.files?.photo;
+    if (!mongoose.isValidObjectId(req.params.pid)) {
+      return res.status(404).send({ success: false, message: "Product not found" });
+    }
     const invalid = await validateProduct(req.fields, photo);
     if (invalid) {
       return res.status(400).send({ success: false, message: invalid });
@@ -172,6 +175,9 @@ export const updateProductController = async (req, res) => {
       { ...fields, slug: slugify(fields.name) },
       { new: true }
     );
+    if (!products) {
+      return res.status(404).send({ success: false, message: "Product not found" });
+    }
     if (photo) {
       products.photo.data = fs.readFileSync(photo.path);
       products.photo.contentType = photo.type;

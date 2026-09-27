@@ -1,5 +1,6 @@
 import categoryModel from "../models/categoryModel.js";
 import slugify from "slugify";
+import mongoose from "mongoose";
 export const createCategoryController = async (req, res) => {
   try {
     const name = req.body.name?.trim();
@@ -34,16 +35,32 @@ export const createCategoryController = async (req, res) => {
 //update category
 export const updateCategoryController = async (req, res) => {
   try {
-    const { name } = req.body;
+    const name = req.body.name?.trim();
     const { id } = req.params;
+    if (!name) {
+      return res.status(400).send({ success: false, message: "Name is required" });
+    }
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).send({ success: false, message: "Category not found" });
+    }
+    const duplicate = await categoryModel.findOne({ name, _id: { $ne: id } });
+    if (duplicate) {
+      return res.status(409).send({
+        success: false,
+        message: "Category already exists",
+      });
+    }
     const category = await categoryModel.findByIdAndUpdate(
       id,
       { name, slug: slugify(name) },
       { new: true }
     );
+    if (!category) {
+      return res.status(404).send({ success: false, message: "Category not found" });
+    }
     res.status(200).send({
       success: true,
-      messsage: "Category Updated Successfully",
+      message: "Category Updated Successfully",
       category,
     });
   } catch (error) {

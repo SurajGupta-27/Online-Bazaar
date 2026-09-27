@@ -54,3 +54,30 @@ await withServer(async ({ api, db }) => {
   const expired = await api("GET", "/api/v1/auth/user-auth", null, { token: "garbage" });
   check("invalid token still gets 401", expired.status === 401);
 });
+
+// #12: update endpoints handle missing/invalid data without crashing
+await withServer(async ({ api, db }) => {
+  const { token, categoryId } = await adminSetup(api, db);
+  const base = { name: "Pen", description: "Blue pen", price: "2", quantity: "1", category: categoryId };
+  const missing = String(new ObjectId());
+  const up = (id) => api("PUT", `/api/v1/product/update-product/${id}`, form(base), { token });
+  const r1 = await up(missing);
+  const r2 = await up("not-an-id");
+  check("update missing product -> 404", r1.status === 404 && r1.json.message === "Product not found", r1.text);
+  check("update product with invalid id -> 404", r2.status === 404, r2.text);
+
+  const upCat = (id, body) => api("PUT", `/api/v1/category/update-category/${id}`, body, { token });
+  const other = await api("POST", "/api/v1/category/create-category", { name: "Toys" }, { token });
+  const c1 = await upCat(categoryId, {});
+  check("update category without name -> 400", c1.status === 400 && c1.json.message === "Name is required", c1.text);
+  const c2 = await upCat(categoryId, { name: "Toys" });
+  check("rename to an existing category -> 409", c2.status === 409 && c2.json.message === "Category already exists", c2.text);
+  const c3 = await upCat(missing, { name: "Games" });
+  const c4 = await upCat("nope", { name: "Games" });
+  check("update missing/invalid category -> 404", c3.status === 404 && c4.status === 404, `${c3.status} ${c4.status}`);
+  const c5 = await upCat(categoryId, { name: " Books & More " });
+  check("valid rename works (trimmed, new slug, correct 'message' key)",
+    c5.status === 200 && c5.json.category.name === "Books & More" && c5.json.category.slug === "books-and-more" && c5.json.message === "Category Updated Successfully", c5.text);
+  const c6 = await upCat(other.json.category._id, { name: "Toys" });
+  check("saving a category with its own name is not a duplicate", c6.status === 200, c6.text);
+});
