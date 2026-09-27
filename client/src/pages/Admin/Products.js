@@ -4,26 +4,46 @@ import Layout from "../../components/Layout/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { Pagination } from "antd";
+import { errorMessage } from "../../utils/errorMessage";
+
+const PER_PAGE = 12;
+
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  //getall products
-  const getAllProducts = async () => {
-    try {
-      const { data } = await axios.get("/api/v1/product/get-product");
-      setProducts(data.products);
-    } catch (error) {
-      console.log(error);
-      toast.error("Someething Went Wrong");
-    }
-  };
-
-  //lifecycle method
+  //total count
   useEffect(() => {
-    getAllProducts();
+    const getTotal = async () => {
+      try {
+        const { data } = await axios.get("/api/v1/product/product-count");
+        setTotal(data?.total || 0);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    getTotal();
   }, []);
+
+  //products for the current page
+  useEffect(() => {
+    const getProducts = async () => {
+      try {
+        const { data } = await axios.get(
+          `/api/v1/product/product-list/${page}?perPage=${PER_PAGE}`
+        );
+        setProducts(data?.products || []);
+      } catch (error) {
+        console.log(error);
+        toast.error(errorMessage(error, "Unable to load products"));
+      }
+    };
+    getProducts();
+  }, [page]);
   return (
-    <Layout>
+    <Layout title={"Dashboard - All Products"}>
       <div className="row">
         <div className="col-md-3">
           <AdminMenu />
@@ -51,6 +71,17 @@ const Products = () => {
               </Link>
             ))}
           </div>
+          {total > PER_PAGE && (
+            <div className="d-flex justify-content-center my-3">
+              <Pagination
+                current={page}
+                pageSize={PER_PAGE}
+                total={total}
+                showSizeChanger={false}
+                onChange={setPage}
+              />
+            </div>
+          )}
         </div>
       </div>
     </Layout>

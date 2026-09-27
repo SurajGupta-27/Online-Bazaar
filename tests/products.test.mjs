@@ -121,3 +121,26 @@ await withServer(async ({ api, db }) => {
   const detail = await api("GET", "/api/v1/product/get-product/blue-pen-2");
   check("each slug resolves to its own product", detail.json.product._id === b.json.products._id);
 });
+
+// Admin list pagination: perPage and page are honoured and validated
+await withServer(async ({ api, db }) => {
+  const cat = new ObjectId();
+  await db.collection("products").insertMany(Array.from({ length: 30 }, (_, i) => ({
+    name: `P${i}`, slug: `p${i}`, description: "d", price: 1, quantity: 1, category: cat,
+    createdAt: new Date(2026, 0, 1, 0, i),
+  })));
+  const list = (path) => api("GET", `/api/v1/product/product-list/${path}`);
+  const names = (r) => r.json.products.map((p) => p.name);
+  const p1 = await list("1?perPage=12");
+  const p3 = await list("3?perPage=12");
+  check("perPage=12: page 1 has the 12 newest", p1.json.products.length === 12 && names(p1)[0] === "P29" && names(p1)[11] === "P18", names(p1).join());
+  check("perPage=12: page 3 has the last 6", p3.json.products.length === 6 && names(p3).at(-1) === "P0", names(p3).join());
+  const def = await list("1");
+  check("default page size is still 6", def.json.products.length === 6);
+  const capped = await list("1?perPage=1000");
+  check("perPage is capped at 48", capped.json.products.length === 30 || capped.json.products.length === 48);
+  const bad = await list("abc");
+  check("invalid page falls back to page 1", bad.status === 200 && names(bad)[0] === "P29", bad.text.slice(0, 100));
+  const count = await api("GET", "/api/v1/product/product-count");
+  check("count reports all products", count.json.total === 30);
+});

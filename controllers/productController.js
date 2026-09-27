@@ -266,8 +266,9 @@ export const productCountController = async (req, res) => {
 // product list base on page
 export const productListController = async (req, res) => {
   try {
-    const perPage = 6;
-    const page = req.params.page ? req.params.page : 1;
+    // ?perPage= lets the admin list show more per page (1-48, default 6).
+    const perPage = Math.min(Math.max(parseInt(req.query.perPage, 10) || 6, 1), 48);
+    const page = Math.max(parseInt(req.params.page, 10) || 1, 1);
     const products = await productModel
       .find({})
       .select("-photo")
