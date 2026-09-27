@@ -42,7 +42,6 @@ export const createProductController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Error in crearing product",
     });
   }
@@ -68,7 +67,6 @@ export const getProductController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Erorr in getting products",
-      error: error.message,
     });
   }
 };
@@ -89,7 +87,6 @@ export const getSingleProductController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Eror while getitng single product",
-      error,
     });
   }
 };
@@ -100,6 +97,8 @@ export const productPhotoController = async (req, res) => {
     const product = await productModel.findById(req.params.pid).select("photo");
     if (product?.photo?.data) {
       res.set("Content-type", product.photo.contentType);
+      // helmet defaults to same-origin; photos must load on the frontend's origin.
+      res.set("Cross-Origin-Resource-Policy", "cross-origin");
       return res.status(200).send(product.photo.data);
     }
     return res.status(404).send({ success: false, message: "Photo not found" });
@@ -108,7 +107,6 @@ export const productPhotoController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Erorr while getting photo",
-      error,
     });
   }
 };
@@ -126,7 +124,6 @@ export const deleteProductController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Error while deleting product",
-      error,
     });
   }
 };
@@ -181,7 +178,6 @@ export const updateProductController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Error in Updte product",
     });
   }
@@ -204,7 +200,6 @@ export const productFiltersController = async (req, res) => {
     res.status(400).send({
       success: false,
       message: "Error WHile Filtering Products",
-      error,
     });
   }
 };
@@ -221,7 +216,6 @@ export const productCountController = async (req, res) => {
     console.log(error);
     res.status(400).send({
       message: "Error in product count",
-      error,
       success: false,
     });
   }
@@ -247,7 +241,6 @@ export const productListController = async (req, res) => {
     res.status(400).send({
       success: false,
       message: "error in per page ctrl",
-      error,
     });
   }
 };
@@ -271,7 +264,6 @@ export const searchProductController = async (req, res) => {
     res.status(400).send({
       success: false,
       message: "Error In Search Product API",
-      error,
     });
   }
 };
@@ -297,7 +289,6 @@ export const realtedProductController = async (req, res) => {
     res.status(400).send({
       success: false,
       message: "error while geting related product",
-      error,
     });
   }
 };
@@ -325,7 +316,6 @@ export const productCategoryController = async (req, res) => {
     console.log(error);
     res.status(400).send({
       success: false,
-      error,
       message: "Error While Getting products",
     });
   }

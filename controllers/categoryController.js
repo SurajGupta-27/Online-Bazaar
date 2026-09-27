@@ -26,7 +26,6 @@ export const createCategoryController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Errro in Category",
     });
   }
@@ -51,7 +50,6 @@ export const updateCategoryController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Error while updating category",
     });
   }
@@ -70,7 +68,6 @@ export const categoryControlller = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Error while getting all categories",
     });
   }
@@ -89,7 +86,6 @@ export const singleCategoryController = async (req, res) => {
     console.log(error);
     res.status(500).send({
       success: false,
-      error,
       message: "Error While getting Single Category",
     });
   }
@@ -109,7 +105,6 @@ export const deleteCategoryCOntroller = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "error while deleting category",
-      error,
     });
   }
 };

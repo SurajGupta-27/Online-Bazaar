@@ -103,10 +103,10 @@ export const getMyOrdersController = async (req, res) => {
       .sort({ createdAt: -1 });
     return res.status(200).send({ success: true, orders });
   } catch (error) {
+    console.log(error);
     return res.status(500).send({
       success: false,
       message: "Unable to load orders",
-      error: error.message,
     });
   }
 };

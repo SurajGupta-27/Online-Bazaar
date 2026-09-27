@@ -8,6 +8,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import cors from "cors";
+import helmet from "helmet";
 import mongoose from "mongoose";
 
 //configure env
@@ -23,8 +24,15 @@ const app = express();
 // limits apply per real client IP. Adjust if deploying behind a remote proxy.
 app.set("trust proxy", "loopback");
 
+// Only the frontend origin(s) may call the API from a browser.
+// CLIENT_URL can be a comma-separated list; defaults to the React dev server.
+const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim());
+
 //middelwares
-app.use(cors());
+app.use(helmet());
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(morgan("dev"));
 
@@ -51,6 +59,17 @@ app.get("/", (req, res) => {
 
 app.get("/api/health", (req, res) => {
   res.status(200).send({ success: true, service: "ecommerce-api" });
+});
+
+// Last-resort error handler: log details, never send them to the client.
+app.use((err, req, res, next) => {
+  console.log(err);
+  const status = err.status || err.statusCode || 500;
+  const clientError = status >= 400 && status < 500;
+  res.status(clientError ? status : 500).send({
+    success: false,
+    message: clientError ? "Invalid request" : "Something went wrong",
+  });
 });
 
 //PORT

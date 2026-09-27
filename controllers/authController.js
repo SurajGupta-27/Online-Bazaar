@@ -190,7 +190,7 @@ export const testController = (req, res) => {
     res.send("Protected Routes");
   } catch (error) {
     console.log(error);
-    res.send({ error });
+    res.status(500).send({ success: false, message: "Something went wrong" });
   }
 };
 
