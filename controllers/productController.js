@@ -3,6 +3,7 @@ import categoryModel from "../models/categoryModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { escapeRegex } from "../helpers/escapeRegex.js";
+import { ALLOWED_PHOTO_TYPES } from "../middlewares/uploadMiddleware.js";
 
 export const createProductController = async (req, res) => {
   try {
@@ -25,6 +26,11 @@ export const createProductController = async (req, res) => {
         return res
           .status(500)
           .send({ error: "photo is Required and should be less then 1mb" });
+      case photo && !ALLOWED_PHOTO_TYPES.includes(photo.type):
+        return res.status(400).send({
+          success: false,
+          message: "Photo must be a JPEG, PNG, WebP, GIF or AVIF image",
+        });
     }
 
     const products = new productModel({ ...req.fields, slug: slugify(name) });
@@ -95,7 +101,11 @@ export const getSingleProductController = async (req, res) => {
 export const productPhotoController = async (req, res) => {
   try {
     const product = await productModel.findById(req.params.pid).select("photo");
-    if (product?.photo?.data) {
+    // Never serve stored content as anything but an image (e.g. text/html).
+    if (
+      product?.photo?.data &&
+      ALLOWED_PHOTO_TYPES.includes(product.photo.contentType)
+    ) {
       res.set("Content-type", product.photo.contentType);
       // helmet defaults to same-origin; photos must load on the frontend's origin.
       res.set("Cross-Origin-Resource-Policy", "cross-origin");
@@ -150,6 +160,11 @@ export const updateProductController = async (req, res) => {
         return res
           .status(500)
           .send({ error: "photo is Required and should be less then 1mb" });
+      case photo && !ALLOWED_PHOTO_TYPES.includes(photo.type):
+        return res.status(400).send({
+          success: false,
+          message: "Photo must be a JPEG, PNG, WebP, GIF or AVIF image",
+        });
     }
 
     const products = await productModel.findByIdAndUpdate(

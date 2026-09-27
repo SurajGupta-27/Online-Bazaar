@@ -3,6 +3,15 @@ import formidable from "express-formidable";
 
 export const MAX_PHOTO_BYTES = 1000000;
 
+// Raster formats only: SVG can carry scripts, so it is deliberately excluded.
+export const ALLOWED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+];
+
 // formidable aborts (and deletes the partial file) as soon as a limit is
 // exceeded, instead of writing the whole upload to disk first.
 const parseForm = formidable({

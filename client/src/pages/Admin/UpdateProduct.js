@@ -135,7 +135,7 @@ const UpdateProduct = () => {
                   <input
                     type="file"
                     name="photo"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                     onChange={(e) => setPhoto(e.target.files[0])}
                     hidden
                   />
