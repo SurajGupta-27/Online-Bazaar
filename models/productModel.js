@@ -35,7 +35,16 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    // Photos are served only by GET /product-photo/:pid, never inside JSON.
+    toJSON: {
+      transform: (doc, ret) => {
+        delete ret.photo;
+        return ret;
+      },
+    },
+  }
 );
 
 export default mongoose.model("Products", productSchema);
