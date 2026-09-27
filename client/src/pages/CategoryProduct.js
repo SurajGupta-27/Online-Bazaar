@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Layout from "../components/Layout/Layout";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,27 +10,47 @@ const CategoryProduct = () => {
   const [, , addToCart] = useCart();
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  // The slug the latest request was for, so a late response for a previously
+  // viewed category is ignored.
+  const currentSlug = useRef(params?.slug);
 
-  useEffect(() => {
-    if (params?.slug) getPrductsByCat();
-  }, [params?.slug]);
-  const getPrductsByCat = async () => {
+  const getPrductsByCat = async (slug, pageToLoad) => {
     try {
+      setLoading(true);
       const { data } = await axios.get(
-        `/api/v1/product/product-category/${params.slug}`
+        `/api/v1/product/product-category/${slug}?page=${pageToLoad}`
       );
-      setProducts(data?.products);
+      if (slug !== currentSlug.current) return;
+      setProducts((current) =>
+        pageToLoad === 1 ? data?.products || [] : [...current, ...(data?.products || [])]
+      );
       setCategory(data?.category);
+      setTotal(data?.total || 0);
+      setPage(pageToLoad);
     } catch (error) {
       console.log(error);
+    } finally {
+      if (slug === currentSlug.current) setLoading(false);
     }
   };
+
+  // Start again from page 1 whenever the category changes.
+  useEffect(() => {
+    currentSlug.current = params?.slug;
+    setProducts([]);
+    setTotal(0);
+    if (params?.slug) getPrductsByCat(params.slug, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.slug]);
 
   return (
     <Layout>
       <div className="container mt-3">
         <h4 className="text-center">Category - {category?.name}</h4>
-        <h6 className="text-center">{products?.length} result found </h6>
+        <h6 className="text-center">{total} result found </h6>
         <div className="row">
           <div className="col-md-9 offset-1">
             <div className="d-flex flex-wrap">
@@ -72,19 +92,20 @@ const CategoryProduct = () => {
                 </div>
               ))}
             </div>
-            {/* <div className="m-2 p-3">
-            {products && products.length < total && (
-              <button
-                className="btn btn-warning"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPage(page + 1);
-                }}
-              >
-                {loading ? "Loading ..." : "Loadmore"}
-              </button>
-            )}
-          </div> */}
+            <div className="m-2 p-3">
+              {products.length < total && (
+                <button
+                  className="btn btn-warning"
+                  disabled={loading}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    getPrductsByCat(params.slug, page + 1);
+                  }}
+                >
+                  {loading ? "Loading ..." : "Loadmore"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

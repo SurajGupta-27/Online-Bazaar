@@ -346,14 +346,24 @@ export const productCategoryController = async (req, res) => {
         message: "Category not found",
       });
     }
-    const products = await productModel
-      .find({ category: category._id })
-      .select("-photo")
-      .populate("category");
+    // Paged like the home page: ?page=N, 6 per page, newest first.
+    const perPage = 6;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const [products, total] = await Promise.all([
+      productModel
+        .find({ category: category._id })
+        .select("-photo")
+        .populate("category")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * perPage)
+        .limit(perPage),
+      productModel.countDocuments({ category: category._id }),
+    ]);
     res.status(200).send({
       success: true,
       category,
       products,
+      total,
     });
   } catch (error) {
     console.log(error);

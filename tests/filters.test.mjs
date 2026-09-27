@@ -32,3 +32,24 @@ await withServer(async ({ api, db }) => {
     check(`${label} -> 400`, r.status === 400, `${r.status} ${r.text}`);
   }
 });
+
+// Category pages are paged 6 at a time with a total
+await withServer(async ({ api, db }) => {
+  const books = new ObjectId(), toys = new ObjectId();
+  await db.collection("categories").insertMany([
+    { _id: books, name: "Books", slug: "books" },
+    { _id: toys, name: "Toys", slug: "toys" },
+  ]);
+  await db.collection("products").insertMany(Array.from({ length: 14 }, (_, i) => ({
+    name: `B${i}`, slug: `b${i}`, description: "d", price: 1, quantity: 1,
+    category: i < 13 ? books : toys, createdAt: new Date(2026, 0, 1, 0, i),
+  })));
+  const get = (q) => api("GET", `/api/v1/product/product-category/books${q}`);
+  const names = (r) => r.json.products.map((p) => p.name).join();
+  const p1 = await get(""), p2 = await get("?page=2"), p3 = await get("?page=3");
+  check("page 1: 6 newest of this category + total", p1.json.total === 13 && names(p1) === "B12,B11,B10,B9,B8,B7", names(p1));
+  check("page 2 continues", names(p2) === "B6,B5,B4,B3,B2,B1", names(p2));
+  check("page 3 has the remainder", names(p3) === "B0", names(p3));
+  const missing = await api("GET", "/api/v1/product/product-category/nope");
+  check("unknown category -> 404", missing.status === 404);
+});
