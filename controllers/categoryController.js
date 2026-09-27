@@ -2,15 +2,15 @@ import categoryModel from "../models/categoryModel.js";
 import slugify from "slugify";
 export const createCategoryController = async (req, res) => {
   try {
-    const { name } = req.body;
+    const name = req.body.name?.trim();
     if (!name) {
-      return res.status(401).send({ message: "Name is required" });
+      return res.status(400).send({ success: false, message: "Name is required" });
     }
     const existingCategory = await categoryModel.findOne({ name });
     if (existingCategory) {
-      return res.status(200).send({
+      return res.status(409).send({
         success: false,
-        message: "Category Already Exisits",
+        message: "Category already exists",
       });
     }
     const category = await new categoryModel({

@@ -3,37 +3,56 @@ import categoryModel from "../models/categoryModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { escapeRegex } from "../helpers/escapeRegex.js";
-import { ALLOWED_PHOTO_TYPES } from "../middlewares/uploadMiddleware.js";
+import mongoose from "mongoose";
+import {
+  ALLOWED_PHOTO_TYPES,
+  MAX_PHOTO_BYTES,
+} from "../middlewares/uploadMiddleware.js";
+
+const isBlank = (value) => value === undefined || String(value).trim() === "";
+
+// Returns a user-facing message for the first invalid field, or null.
+const validateProduct = async (fields, photo) => {
+  const { name, description, price, category, quantity } = fields;
+  if (isBlank(name)) return "Name is required";
+  if (isBlank(description)) return "Description is required";
+  if (isBlank(price) || !(Number(price) >= 0)) {
+    return "Price must be a number of 0 or more";
+  }
+  if (isBlank(quantity) || !Number.isInteger(Number(quantity)) || Number(quantity) < 0) {
+    return "Quantity must be a whole number of 0 or more";
+  }
+  if (isBlank(category)) return "Category is required";
+  if (!mongoose.isValidObjectId(category) || !(await categoryModel.exists({ _id: category }))) {
+    return "Selected category does not exist";
+  }
+  if (photo && photo.size > MAX_PHOTO_BYTES) return "Photo must be less than 1MB";
+  if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+    return "Photo must be a JPEG, PNG, WebP, GIF or AVIF image";
+  }
+  return null;
+};
+
+// Only these fields can be set from the admin form.
+const productFields = (fields) => ({
+  name: String(fields.name).trim(),
+  description: String(fields.description).trim(),
+  price: Number(fields.price),
+  quantity: Number(fields.quantity),
+  category: fields.category,
+  shipping: ["1", "true", "yes"].includes(String(fields.shipping).toLowerCase()),
+});
 
 export const createProductController = async (req, res) => {
   try {
-    const { name, description, price, category, quantity, shipping } =
-      req.fields;
     const photo = req.files?.photo;
-    //alidation
-    switch (true) {
-      case !name:
-        return res.status(500).send({ error: "Name is Required" });
-      case !description:
-        return res.status(500).send({ error: "Description is Required" });
-      case !price:
-        return res.status(500).send({ error: "Price is Required" });
-      case !category:
-        return res.status(500).send({ error: "Category is Required" });
-      case !quantity:
-        return res.status(500).send({ error: "Quantity is Required" });
-      case photo && photo.size > 1000000:
-        return res
-          .status(500)
-          .send({ error: "photo is Required and should be less then 1mb" });
-      case photo && !ALLOWED_PHOTO_TYPES.includes(photo.type):
-        return res.status(400).send({
-          success: false,
-          message: "Photo must be a JPEG, PNG, WebP, GIF or AVIF image",
-        });
+    const invalid = await validateProduct(req.fields, photo);
+    if (invalid) {
+      return res.status(400).send({ success: false, message: invalid });
     }
 
-    const products = new productModel({ ...req.fields, slug: slugify(name) });
+    const fields = productFields(req.fields);
+    const products = new productModel({ ...fields, slug: slugify(fields.name) });
     if (photo) {
       products.photo.data = fs.readFileSync(photo.path);
       products.photo.contentType = photo.type;
@@ -141,44 +160,19 @@ export const deleteProductController = async (req, res) => {
 //upate producta
 export const updateProductController = async (req, res) => {
   try {
-    const { name, description, price, category, quantity, shipping } =
-      req.fields;
     const photo = req.files?.photo;
-    //alidation
-    switch (true) {
-      case !name:
-        return res.status(500).send({ error: "Name is Required" });
-      case !description:
-        return res.status(500).send({ error: "Description is Required" });
-      case !price:
-        return res.status(500).send({ error: "Price is Required" });
-      case !category:
-        return res.status(500).send({ error: "Category is Required" });
-      case !quantity:
-        return res.status(500).send({ error: "Quantity is Required" });
-      case photo && photo.size > 1000000:
-        return res
-          .status(500)
-          .send({ error: "photo is Required and should be less then 1mb" });
-      case photo && !ALLOWED_PHOTO_TYPES.includes(photo.type):
-        return res.status(400).send({
-          success: false,
-          message: "Photo must be a JPEG, PNG, WebP, GIF or AVIF image",
-        });
+    const invalid = await validateProduct(req.fields, photo);
+    if (invalid) {
+      return res.status(400).send({ success: false, message: invalid });
     }
 
+    const fields = productFields(req.fields);
     const products = await productModel.findByIdAndUpdate(
       req.params.pid,
-      { ...req.fields, slug: slugify(name) },
+      { ...fields, slug: slugify(fields.name) },
       { new: true }
     );
     if (photo) {
-      if(photo.size > 1000000) {
-        return res.status(500).send({
-        success: false,
-        message: "Image should be less than 1MB",
-      });
-    }
       products.photo.data = fs.readFileSync(photo.path);
       products.photo.contentType = photo.type;
     }

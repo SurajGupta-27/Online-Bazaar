@@ -3,6 +3,7 @@ import Layout from "../../components/Layout/Layout";
 import AdminMenu from "../../components/Layout/AdminMenu";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { errorMessage } from "../../utils/errorMessage";
 import CategoryForm from "../../components/Form/CategoryForm";
 import { Modal } from "antd";
 const CreateCategory = () => {
@@ -26,7 +27,7 @@ const CreateCategory = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("somthing went wrong in input form");
+      toast.error(errorMessage(error, "Unable to create category"));
     }
   };
 
@@ -39,7 +40,7 @@ const CreateCategory = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something wwent wrong in getting catgeory");
+      toast.error(errorMessage(error, "Unable to load categories"));
     }
   };
 
@@ -65,7 +66,7 @@ const CreateCategory = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error("Somtihing went wrong");
+      toast.error(errorMessage(error));
     }
   };
   //delete category
@@ -82,7 +83,7 @@ const CreateCategory = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error("Somtihing went wrong");
+      toast.error(errorMessage(error));
     }
   };
   return (

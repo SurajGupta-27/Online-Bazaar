@@ -4,6 +4,7 @@ import Layout from "./../../components/Layout/Layout";
 import { useAuth } from "../../context/auth";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { errorMessage } from "../../utils/errorMessage";
 const Profile = () => {
   //context
   const [auth, setAuth] = useAuth();
@@ -34,8 +35,8 @@ const Profile = () => {
         phone,
         address,
       });
-      if (data?.error) {
-        toast.error(data?.error);
+      if (!data?.success) {
+        toast.error(data?.message || "Unable to update profile");
       } else {
         setAuth({ ...auth, user: data?.updatedUser });
         let ls = localStorage.getItem("auth");
@@ -46,7 +47,7 @@ const Profile = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong");
+      toast.error(errorMessage(error, "Unable to update profile"));
     }
   };
   return (

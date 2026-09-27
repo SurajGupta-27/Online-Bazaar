@@ -3,6 +3,7 @@ import Layout from "../../components/Layout/Layout";
 import AdminMenu from "../../components/Layout/AdminMenu";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { errorMessage } from "../../utils/errorMessage";
 import { Select } from "antd";
 import { useNavigate } from "react-router-dom";
 const { Option } = Select;
@@ -27,7 +28,7 @@ const CreateProduct = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something wwent wrong in getting catgeory");
+      toast.error(errorMessage(error, "Unable to load categories"));
     }
   };
 
@@ -59,7 +60,7 @@ const CreateProduct = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("something went wrong");
+      toast.error(errorMessage(error, "Unable to create product"));
     }
   };
 
