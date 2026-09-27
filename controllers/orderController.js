@@ -110,3 +110,71 @@ export const getMyOrdersController = async (req, res) => {
     });
   }
 };
+
+// ADMIN: every order, newest first, with the buyer's name and email.
+export const getAllOrdersController = async (req, res) => {
+  try {
+    const orders = await orderModel
+      .find({})
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+    return res.status(200).send({ success: true, orders });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      success: false,
+      message: "Unable to load orders",
+    });
+  }
+};
+
+// ADMIN: change an order's status. Cancelling returns the items to stock, and
+// a cancelled order can't be reopened (its stock has already been released).
+export const updateOrderStatusController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!orderModel.schema.path("status").enumValues.includes(status)) {
+      return res.status(400).send({ success: false, message: "Invalid order status" });
+    }
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+
+    // Only a not-yet-cancelled order changes, so stock is restored at most once.
+    const previous = await orderModel.findOneAndUpdate(
+      { _id: id, status: { $ne: "cancelled" } },
+      { status }
+    );
+    if (!previous) {
+      const existing = await orderModel.findById(id);
+      if (!existing) {
+        return res.status(404).send({ success: false, message: "Order not found" });
+      }
+      if (status !== "cancelled") {
+        return res.status(409).send({
+          success: false,
+          message: "Cancelled orders can't be reopened",
+        });
+      }
+    } else if (status === "cancelled") {
+      await Promise.all(
+        previous.items.map((item) =>
+          productModel.updateOne(
+            { _id: item.product },
+            { $inc: { quantity: item.quantity } }
+          )
+        )
+      );
+    }
+
+    const order = await orderModel.findById(id).populate("user", "name email");
+    return res.status(200).send({ success: true, message: "Order status updated", order });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      success: false,
+      message: "Unable to update order status",
+    });
+  }
+};
