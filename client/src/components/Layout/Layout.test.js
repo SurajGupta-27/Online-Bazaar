@@ -24,6 +24,8 @@ const renderLayout = (props) =>
     </AuthProvider>
   );
 
+// <meta> tags live in <head>, which Testing Library queries don't cover.
+// eslint-disable-next-line testing-library/no-node-access
 const meta = (name) => document.querySelector(`meta[name="${name}"]`)?.getAttribute("content");
 
 test("pages without a title get the default title and meta tags", async () => {

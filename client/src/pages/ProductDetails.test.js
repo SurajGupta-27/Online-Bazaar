@@ -29,7 +29,7 @@ const renderAt = (slug) =>
   );
 
 const photoSrcs = () =>
-  [...document.querySelectorAll("img")].map((img) => img.getAttribute("src"));
+  screen.queryAllByRole("img").map((img) => img.getAttribute("src"));
 
 test("no photo request with an undefined id while loading, then the real one", async () => {
   axios.get.mockImplementation((url) =>
