@@ -215,9 +215,23 @@ export const updateProductController = async (req, res) => {
 export const productFiltersController = async (req, res) => {
   try {
     const { checked = [], radio = [] } = req.body;
+    if (!Array.isArray(checked) || !checked.every((id) => mongoose.isValidObjectId(id))) {
+      return res.status(400).send({ success: false, message: "Invalid category filter" });
+    }
+    // radio is a price range [min, max): max is excluded, null means no limit.
+    const [min, max] = Array.isArray(radio) ? radio : [];
+    if (
+      !Array.isArray(radio) ||
+      (radio.length > 0 && !(Number.isFinite(min) && (max === null || Number.isFinite(max))))
+    ) {
+      return res.status(400).send({ success: false, message: "Invalid price filter" });
+    }
     let args = {};
-    if (checked.length > 0) args.category = checked;
-    if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+    if (checked.length > 0) args.category = { $in: checked };
+    if (radio.length) {
+      args.price = { $gte: min };
+      if (max !== null) args.price.$lt = max;
+    }
     const products = await productModel.find(args).select("-photo").populate("category");
     res.status(200).send({
       success: true,
