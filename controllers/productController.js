@@ -129,6 +129,9 @@ export const getSingleProductController = async (req, res) => {
 // get photo
 export const productPhotoController = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.pid)) {
+      return res.status(404).send({ success: false, message: "Photo not found" });
+    }
     const product = await productModel.findById(req.params.pid).select("photo");
     // Never serve stored content as anything but an image (e.g. text/html).
     if (

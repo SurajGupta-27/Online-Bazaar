@@ -154,14 +154,16 @@ const UpdateProduct = () => {
                     />
                   </div>
                 ) : (
-                  <div className="text-center">
-                    <img
-                      src={`/api/v1/product/product-photo/${id}`}
-                      alt="product_photo"
-                      height={"200px"}
-                      className="img img-responsive"
-                    />
-                  </div>
+                  id && (
+                    <div className="text-center">
+                      <img
+                        src={`/api/v1/product/product-photo/${id}`}
+                        alt="product_photo"
+                        height={"200px"}
+                        className="img img-responsive"
+                      />
+                    </div>
+                  )
                 )}
               </div>
               <div className="mb-3">

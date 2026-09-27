@@ -38,7 +38,7 @@ await withServer(async ({ api, db, base }) => {
   check("photo served with cross-origin resource policy", photo.status === 200 && photo.headers.get("cross-origin-resource-policy") === "cross-origin");
 
   const cast = await api("GET", "/api/v1/product/product-photo/not-an-id");
-  check("server error response has no error details", cast.status === 500 && !("error" in (cast.json || {})), cast.text);
+  check("invalid photo id -> 404 without error details", cast.status === 404 && !("error" in (cast.json || {})), cast.text);
   const badJson = await fetch(`${base}/api/v1/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{bad" });
   const badText = await badJson.text();
   check("malformed JSON -> 400 generic message, no stack", badJson.status === 400 && !/at |SyntaxError/.test(badText), `${badJson.status} ${badText}`);

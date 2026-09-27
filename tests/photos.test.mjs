@@ -38,3 +38,11 @@ await withServer(async ({ api, db }) => {
   const img = await api("GET", `/api/v1/product/product-photo/${p._id}`);
   check("photo still served by the photo endpoint", img.status === 200 && img.headers.get("content-type").startsWith("image/png"));
 });
+
+// #15: invalid or missing ids are a 404, not a server error
+await withServer(async ({ api }) => {
+  for (const id of ["undefined", "not-an-id", String(new ObjectId())]) {
+    const r = await api("GET", `/api/v1/product/product-photo/${id}`);
+    check(`photo for "${id}" -> 404`, r.status === 404, `${r.status} ${r.text}`);
+  }
+});
