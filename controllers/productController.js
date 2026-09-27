@@ -43,6 +43,16 @@ const productFields = (fields) => ({
   shipping: ["1", "true", "yes"].includes(String(fields.shipping).toLowerCase()),
 });
 
+// Lowercase, URL-safe slug that no other product uses ("pen", "pen-2", ...).
+const uniqueSlug = async (name, excludeId) => {
+  const base = slugify(name, { lower: true, strict: true }) || "product";
+  let slug = base;
+  for (let n = 2; await productModel.exists({ slug, _id: { $ne: excludeId } }); n++) {
+    slug = `${base}-${n}`;
+  }
+  return slug;
+};
+
 export const createProductController = async (req, res) => {
   try {
     const photo = req.files?.photo;
@@ -52,7 +62,7 @@ export const createProductController = async (req, res) => {
     }
 
     const fields = productFields(req.fields);
-    const products = new productModel({ ...fields, slug: slugify(fields.name) });
+    const products = new productModel({ ...fields, slug: await uniqueSlug(fields.name) });
     if (photo) {
       products.photo.data = fs.readFileSync(photo.path);
       products.photo.contentType = photo.type;
@@ -172,7 +182,7 @@ export const updateProductController = async (req, res) => {
     const fields = productFields(req.fields);
     const products = await productModel.findByIdAndUpdate(
       req.params.pid,
-      { ...fields, slug: slugify(fields.name) },
+      { ...fields, slug: await uniqueSlug(fields.name, req.params.pid) },
       { new: true }
     );
     if (!products) {

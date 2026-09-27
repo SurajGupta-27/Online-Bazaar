@@ -98,3 +98,26 @@ await withServer(async ({ api, db }) => {
   const again = await del(categoryId);
   check("delete missing category -> 404", again.status === 404, again.text);
 });
+
+// #14: product slugs are lowercase and unique
+await withServer(async ({ api, db }) => {
+  const { token, categoryId } = await adminSetup(api, db);
+  const make = (name) => api("POST", "/api/v1/product/create-product",
+    form({ name, description: "d", price: "1", quantity: "1", category: categoryId }), { token });
+  const a = await make("Blue Pen");
+  const b = await make("Blue Pen");
+  const c = await make("blue pen!");
+  const slugs = [a, b, c].map((r) => r.json.products.slug);
+  check("slugs are lowercase and unique", JSON.stringify(slugs) === JSON.stringify(["blue-pen", "blue-pen-2", "blue-pen-3"]), slugs.join(", "));
+  const d = await make("!!!");
+  check("name with no letters still gets a slug", d.json.products.slug === "product", d.json.products.slug);
+
+  const upd = (id, name) => api("PUT", `/api/v1/product/update-product/${id}`,
+    form({ name, description: "d2", price: "1", quantity: "1", category: categoryId }), { token });
+  const same = await upd(a.json.products._id, "Blue Pen");
+  check("re-saving a product keeps its own slug", same.json.products.slug === "blue-pen", same.json.products.slug);
+  const renamed = await upd(c.json.products._id, "Blue Pen");
+  check("renaming onto a taken slug gets a suffix", renamed.json.products.slug === "blue-pen-3", renamed.json.products.slug);
+  const detail = await api("GET", "/api/v1/product/get-product/blue-pen-2");
+  check("each slug resolves to its own product", detail.json.product._id === b.json.products._id);
+});
