@@ -236,3 +236,23 @@ export const updateProfileController = async (req, res) => {
     });
   }
 };
+
+// ADMIN: every user (public fields only), newest first.
+export const getAllUsersController = async (req, res) => {
+  try {
+    const users = await userModel
+      .find({})
+      .select("-password -answer")
+      .sort({ createdAt: -1 });
+    res.status(200).send({
+      success: true,
+      users: users.map((user) => ({ ...publicUser(user), createdAt: user.createdAt })),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Unable to load users",
+    });
+  }
+};

@@ -43,3 +43,18 @@ await withServer(async ({ api, db }) => {
   check("cancelled orders can't be reopened", reopen.status === 409 && reopen.json.message === "Cancelled orders can't be reopened");
   check("stock unchanged by the refused reopen", (await stock()) === 8);
 });
+
+// Admin users list
+await withServer(async ({ api, db }) => {
+  const { token: admin } = await adminSetup(api, db);
+  const shopper = await signUp(api, "shopper@x.com");
+  const list = await api("GET", "/api/v1/auth/all-users", null, { token: admin });
+  check("admin lists all users, newest first", list.status === 200 && list.json.users.map((u) => u.email).join() === "shopper@x.com,admin@x.com", list.text.slice(0, 200));
+  const u = list.json.users[0];
+  check("users have public fields, role and join date only",
+    JSON.stringify(Object.keys(u).sort()) === JSON.stringify(["_id", "address", "createdAt", "email", "name", "phone", "role"]), Object.keys(u).join());
+  check("roles are reported", list.json.users.map((x) => x.role).join() === "0,1");
+  const denied = await api("GET", "/api/v1/auth/all-users", null, { token: shopper });
+  const anon = await api("GET", "/api/v1/auth/all-users");
+  check("non-admins can't list users", denied.status === 403 && anon.status === 401, `${denied.status} ${anon.status}`);
+});
