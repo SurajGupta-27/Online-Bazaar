@@ -10,10 +10,11 @@ export default function PrivateRoute() {
 
   useEffect(() => {
     const authCheck = async () => {
-      const res = await axios.get("/api/v1/auth/user-auth");
-      if (res.data.ok) {
-        setOk(true);
-      } else {
+      try {
+        const res = await axios.get("/api/v1/auth/user-auth");
+        setOk(res.data?.ok === true);
+      } catch (error) {
+        // Not signed in, expired token, or not an admin: Spinner redirects.
         setOk(false);
       }
     };
