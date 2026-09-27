@@ -38,7 +38,7 @@ const Register = () => {
   };
 
   return (
-    <Layout title="Register - Ecommer App">
+    <Layout title="Register - Ecommerce App">
       <div className="form-container ">
         <form onSubmit={handleSubmit}>
           <h4 className="title">REGISTER FORM</h4>

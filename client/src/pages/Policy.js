@@ -23,11 +23,4 @@ const Policy = () => {
   );
 };
 
-Layout.defaultProps = {
-  title: "Ecommerce app - shop now",
-  description: "mern stack project",
-  keywords: "mern,react,node,mongodb",
-  author: "TechInfo",
-};
-
 export default Policy;
