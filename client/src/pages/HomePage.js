@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Layout from "./../components/Layout/Layout";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -17,6 +17,9 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Bumped whenever the filters change, so responses for old filters are ignored.
+  const requestVersion = useRef(0);
+  const filtersActive = checked.length > 0 || radio.length > 0;
 
   //get all cat
   const getAllCategory = async () => {
@@ -34,23 +37,6 @@ const HomePage = () => {
     getAllCategory();
     getTotal();
   }, []);
-  //get products
-  const getAllProducts = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const { data } = await axios.get(`/api/v1/product/product-list/${page}`);
-      setLoading(false);
-      setProducts(data.products);
-    } catch (error) {
-      setLoading(false);
-      console.log(error);
-      setError(
-        error.response?.data?.message ||
-          "Products are unavailable. Check the database connection."
-      );
-    }
-  };
 
   //getTOtal COunt
   const getTotal = async () => {
@@ -62,52 +48,60 @@ const HomePage = () => {
     }
   };
 
+  // Show the filtered results, or the first page when no filter is set.
   useEffect(() => {
-    if (page === 1) return;
-    loadMore();
-  }, [page]);
-  //load more
+    const version = ++requestVersion.current;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const { data } = filtersActive
+          ? await axios.post("/api/v1/product/product-filters", { checked, radio })
+          : await axios.get("/api/v1/product/product-list/1");
+        if (version !== requestVersion.current) return;
+        setProducts(data?.products || []);
+        setPage(1);
+      } catch (error) {
+        if (version !== requestVersion.current) return;
+        console.log(error);
+        setError(
+          error.response?.data?.message ||
+            "Products are unavailable. Check the database connection."
+        );
+      } finally {
+        if (version === requestVersion.current) setLoading(false);
+      }
+    };
+    load();
+  }, [checked, radio, filtersActive]);
+
+  //load more (unfiltered list only)
   const loadMore = async () => {
+    const version = requestVersion.current;
+    const nextPage = page + 1;
     try {
       setLoading(true);
-      const { data } = await axios.get(`/api/v1/product/product-list/${page}`);
-      setLoading(false);
-      setProducts([...products, ...data?.products]);
+      const { data } = await axios.get(`/api/v1/product/product-list/${nextPage}`);
+      if (version !== requestVersion.current) return;
+      setProducts((current) => [...current, ...(data?.products || [])]);
+      setPage(nextPage);
     } catch (error) {
       console.log(error);
-      setLoading(false);
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   // filter by cat
   const handleFilter = (value, id) => {
-    let all = [...checked];
-    if (value) {
-      all.push(id);
-    } else {
-      all = all.filter((c) => c !== id);
-    }
-    setChecked(all);
+    setChecked((current) =>
+      value ? [...current, id] : current.filter((c) => c !== id)
+    );
   };
-  useEffect(() => {
-    if (!checked.length || !radio.length) getAllProducts();
-  }, [checked.length, radio.length]);
 
-  useEffect(() => {
-    if (checked.length || radio.length) filterProduct();
-  }, [checked, radio]);
-
-  //get filterd product
-  const filterProduct = async () => {
-    try {
-      const { data } = await axios.post("/api/v1/product/product-filters", {
-        checked,
-        radio,
-      });
-      setProducts(data?.products);
-    } catch (error) {
-      console.log(error);
-    }
+  const resetFilters = () => {
+    setChecked([]);
+    setRadio([]);
   };
   return (
     <Layout title={"ALl Products - Best offers "}>
@@ -118,6 +112,7 @@ const HomePage = () => {
             {categories?.map((c) => (
               <Checkbox
                 key={c._id}
+                checked={checked.includes(c._id)}
                 onChange={(e) => handleFilter(e.target.checked, c._id)}
               >
                 {c.name}
@@ -127,7 +122,7 @@ const HomePage = () => {
           {/* price filter */}
           <h4 className="text-center mt-4">Filter By Price</h4>
           <div className="d-flex flex-column">
-            <Radio.Group onChange={(e) => setRadio(e.target.value)}>
+            <Radio.Group value={radio} onChange={(e) => setRadio(e.target.value)}>
               {Prices?.map((p) => (
                 <div key={p._id}>
                   <Radio value={p.array}>{p.name}</Radio>
@@ -138,7 +133,7 @@ const HomePage = () => {
           <div className="d-flex flex-column">
             <button
               className="btn btn-danger"
-              onClick={() => window.location.reload()}
+              onClick={resetFilters}
             >
               RESET FILTERS
             </button>
@@ -149,8 +144,14 @@ const HomePage = () => {
           {error && <div className="alert alert-warning" role="alert">{error}</div>}
           {!loading && !error && products.length === 0 && (
             <div className="empty-state text-center p-5">
-              <h3>No products yet</h3>
-              <p className="text-muted">Add products from the admin dashboard once MongoDB is connected.</p>
+              {filtersActive ? (
+                <h3>No products match these filters</h3>
+              ) : (
+                <>
+                  <h3>No products yet</h3>
+                  <p className="text-muted">Add products from the admin dashboard once MongoDB is connected.</p>
+                </>
+              )}
             </div>
           )}
           <div className="d-flex flex-wrap">
@@ -189,12 +190,13 @@ const HomePage = () => {
             ))}
           </div>
           <div className="m-2 p-3">
-            {products && products.length < total && (
+            {!filtersActive && products.length < total && (
               <button
                 className="btn btn-warning"
+                disabled={loading}
                 onClick={(e) => {
                   e.preventDefault();
-                  setPage(page + 1);
+                  loadMore();
                 }}
               >
                 {loading ? "Loading ..." : "Loadmore"}
