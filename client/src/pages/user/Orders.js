@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import UserMenu from "../../components/Layout/UserMenu";
 import { formatPrice } from "../../utils/formatPrice";
+import PaymentInfo from "../../components/PaymentInfo";
 import Layout from "../../components/Layout/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -41,6 +42,7 @@ const Orders = () => {
                     </span>
                   </div>
                   <p className="mb-1 mt-2">{order.items.map((item) => `${item.name} x${item.quantity}`).join(", ")}</p>
+                  <PaymentInfo order={order} />
                   <strong>{formatPrice(order.total)}</strong>
                   <small className="text-muted d-block mt-1">
                     {new Date(order.createdAt).toLocaleDateString()}
