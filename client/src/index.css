@@ -1,25 +1,49 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap");
 
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap");
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
+/* Online Bazaar theme. Change colours here, not in components. */
 :root {
-  color: #263238;
-  background: #fffaf3;
-  font-family: "DM Sans", sans-serif;
+  --ob-primary: #1e3a8a;
+  --ob-primary-dark: #172e6e;
+  --ob-primary-soft: #e8edfb;
+  --ob-accent: #f97316;
+  --ob-accent-dark: #e05f0a;
+  --ob-accent-soft: #fff1e6;
+  --ob-ink: #0f172a;
+  --ob-muted: #64748b;
+  --ob-border: #e2e8f0;
+  --ob-surface: #ffffff;
+  --ob-bg: #f6f7fb;
+  --ob-success: #15803d;
+  --ob-danger: #dc2626;
+  --ob-radius: 0.875rem;
+  --ob-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --ob-shadow-hover: 0 2px 4px rgba(15, 23, 42, 0.06), 0 16px 32px rgba(15, 23, 42, 0.1);
+
+  /* Bootstrap picks these up for links and focus rings. */
+  --bs-link-color: var(--ob-primary);
+  --bs-link-color-rgb: 30, 58, 138;
+  --bs-link-hover-color: var(--ob-accent-dark);
+  --bs-link-hover-color-rgb: 224, 95, 10;
+  --bs-body-font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  color: var(--ob-ink);
+  background: var(--ob-bg);
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
-  background: #fffaf3;
-  color: #263238;
+  margin: 0;
+  background: var(--ob-bg);
+  color: var(--ob-ink);
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 button,
@@ -29,99 +53,206 @@ select {
   font: inherit;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--ob-ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
 :focus-visible {
-  outline: 3px solid #ef8354;
+  outline: 3px solid var(--ob-accent);
   outline-offset: 2px;
 }
 
-/* font-family: 'Poppins', sans-serif; */
-/* font-family: 'Playfair Display', serif; */
-
-/* //navbar css */
+/* ============ navbar ============ */
 .navbar {
-  background: rgba(255, 250, 243, 0.96) !important;
-  font-family: "DM Sans", sans-serif;
-  font-size: 17px;
-  line-height: 26px;
-  text-transform: uppercase;
-  box-shadow: 0 8px 24px -18px #14213d;
-  border-bottom: 1px solid #eadfd2 !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--ob-border);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+  font-size: 0.97rem;
 }
 
-.nav-link {
-  font-weight: 300 !important;
+.navbar .nav-link {
+  color: var(--ob-ink);
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem !important;
 }
 
-.active {
-  border-bottom: 2px solid #ef8354;
+.navbar .nav-link:hover {
+  color: var(--ob-primary);
+  background: var(--ob-primary-soft);
 }
 
-.navbar-brand {
-  font-weight: 700;
-  font-family: "DM Sans", sans-serif;
+.navbar .nav-link.active {
+  color: var(--ob-primary);
+  font-weight: 600;
 }
-/* =============================
-==========footer============= */
 
+.navbar-nav {
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ob-ink) !important;
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, var(--ob-primary) 0%, #3657c9 100%);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.brand-accent {
+  color: var(--ob-accent);
+}
+
+/* ============ footer ============ */
 .footer {
-  color: #fffaf3;
-  padding: 2rem 1.5rem;
-  background: #14213d;
+  margin-top: 3rem;
+  padding: 2.5rem 0 1.5rem;
+  background: var(--ob-ink);
+  color: #cbd5e1;
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.footer-brand {
+  margin: 0;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.footer-tagline {
+  margin: 0.25rem 0 0;
+  color: #94a3b8;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
 }
 
 .footer a {
+  color: #e2e8f0;
   text-decoration: none;
-  color: white;
-  padding: 10px;
 }
 
 .footer a:hover {
-  color: #ef8354;
-  border-bottom: 1px solid #ef8354;
+  color: var(--ob-accent);
 }
-/* =================================
-======== page not found css ======= */
+
+.footer-copy {
+  margin: 1.75rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid #1e293b;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* ============ page not found ============ */
 .pnf {
   display: flex;
   min-height: 65vh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
 }
 
 .pnf-title {
-  font-size: 100px;
-  font-weight: 700;
+  color: var(--ob-primary);
+  font-size: 6rem;
+  font-weight: 800;
 }
 
 .pnf-heading {
-  font-weight: normal;
+  font-weight: 500;
 }
 
 .pnf-btn {
-  color: black;
-  border: 1px solid black;
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  background: var(--ob-primary);
+  color: #fff;
   text-decoration: none;
-  padding: 10px;
-  margin-top: 10px;
-}
-.pnf-btn:hover {
-  background-color: black;
-  color: white;
-}
-/* ========================================= */
-/* =========contact us ========= */
-.contactus {
-  margin: 0;
-  padding: 0;
-  height: 70vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* ==================== */
+.pnf-btn:hover {
+  background: var(--ob-primary-dark);
+  color: #fff;
+}
+
+/* ============ info pages (about, contact, policy) ============ */
+.info-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2.5rem;
+  padding: 3rem 0;
+}
+
+.info-page img {
+  width: 100%;
+  border-radius: var(--ob-radius);
+  box-shadow: var(--ob-shadow);
+}
+
+.info-page h1 {
+  margin-bottom: 1rem;
+}
+
+.info-page p {
+  color: var(--ob-muted);
+  line-height: 1.7;
+}
+
+.info-page .contact-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ob-ink);
+}
+
+@media (max-width: 768px) {
+  .info-page {
+    grid-template-columns: 1fr;
+    padding: 1.5rem 0;
+  }
+}
+
 .product-link {
   text-decoration: none !important;
-  color: black !important;
+  color: inherit !important;
 }

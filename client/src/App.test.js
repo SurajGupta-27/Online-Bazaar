@@ -52,7 +52,7 @@ const renderAt = (path) =>
 test("home page shows the header, categories and products", async () => {
   renderAt("/");
   expect(await screen.findByText("Blue Pen")).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "All Products" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "All products" })).toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "Books" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Login" })).toBeInTheDocument();
 });

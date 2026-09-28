@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Layout from "./Layout";
 import { AuthProvider } from "../../context/auth";
@@ -28,13 +28,23 @@ const renderLayout = (props) =>
 // eslint-disable-next-line testing-library/no-node-access
 const meta = (name) => document.querySelector(`meta[name="${name}"]`)?.getAttribute("content");
 
-test("pages without a title get the default title and meta tags", async () => {
+test("pages without a title get the store's default title and meta tags", async () => {
   renderLayout({});
-  await waitFor(() => expect(document.title).toBe("Ecommerce app - shop now"));
-  expect(meta("description")).toBe("mern stack project");
+  await waitFor(() =>
+    expect(document.title).toBe("Online Bazaar | Everything you need, delivered to your door")
+  );
+  expect(meta("description")).toMatch(/^Online Bazaar: /);
+  expect(meta("author")).toBe("Suraj Gupta");
 });
 
-test("a page's own title wins", async () => {
-  renderLayout({ title: "Login - Ecommerce App" });
-  await waitFor(() => expect(document.title).toBe("Login - Ecommerce App"));
+test("a page's own title is followed by the store name", async () => {
+  renderLayout({ title: "Login" });
+  await waitFor(() => expect(document.title).toBe("Login | Online Bazaar"));
+});
+
+test("header and footer show the Online Bazaar brand and owner", () => {
+  renderLayout({});
+  expect(screen.getByRole("link", { name: /Online Bazaar/ })).toHaveAttribute("href", "/");
+  expect(screen.getByText(/Built by Suraj Gupta/)).toBeInTheDocument();
+  expect(screen.queryByText(/Techinfoyt|Ecommerce App/i)).toBeNull();
 });

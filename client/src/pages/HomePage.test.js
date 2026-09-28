@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import axios from "axios";
 import HomePage from "./HomePage";
@@ -73,7 +73,7 @@ test("a slow unfiltered response does not overwrite filtered results", async () 
     listPage1.resolve({ data: { products: [product("u1", "Unfiltered Item")] } });
   });
   expect(screen.queryByText("Unfiltered Item")).toBeNull();
-  expect(screen.queryByText("Loadmore")).toBeNull();
+  expect(screen.queryByText("Load more")).toBeNull();
 });
 
 test("load more appends pages and reset returns to the unfiltered list", async () => {
@@ -81,17 +81,37 @@ test("load more appends pages and reset returns to the unfiltered list", async (
   await act(async () => {
     listPage1.resolve({ data: { products: [product("u1", "Unfiltered Item")] } });
   });
-  fireEvent.click(await screen.findByText("Loadmore"));
+  fireEvent.click(await screen.findByText("Load more"));
   expect(await screen.findByText("Page Two Item")).toBeInTheDocument();
   expect(screen.getByText("Unfiltered Item")).toBeInTheDocument();
 
   const box = screen.getByRole("checkbox", { name: "Books" });
   fireEvent.click(box);
   expect(await screen.findByText("Filtered Book")).toBeInTheDocument();
-  expect(screen.queryByText("Loadmore")).toBeNull();
+  expect(screen.queryByText("Load more")).toBeNull();
 
-  fireEvent.click(screen.getByText("RESET FILTERS"));
+  fireEvent.click(screen.getByText("Reset filters"));
   expect(await screen.findByText("Unfiltered Item")).toBeInTheDocument();
   expect(screen.queryByText("Filtered Book")).toBeNull();
   expect(box).not.toBeChecked();
+});
+
+test("the hero links to categories and counts the catalogue", async () => {
+  renderPage();
+  await act(async () => {
+    listPage1.resolve({ data: { products: [product("u1", "Unfiltered Item")] } });
+  });
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Everything you love/);
+  const popular = screen.getByRole("navigation", { name: "Popular categories" });
+  expect(within(popular).getByRole("link", { name: "Books" })).toHaveAttribute("href", "/category/books");
+  expect(screen.getByText("20 products")).toBeInTheDocument();
+  expect(screen.getByText("Across 1 category")).toBeInTheDocument();
+});
+
+test("product cards show prices in rupees", async () => {
+  renderPage();
+  await act(async () => {
+    listPage1.resolve({ data: { products: [{ ...product("u1", "Kettle"), price: 1299 }] } });
+  });
+  expect(screen.getByText("₹1,299")).toBeInTheDocument();
 });

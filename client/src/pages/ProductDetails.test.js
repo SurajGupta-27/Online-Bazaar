@@ -39,7 +39,7 @@ test("no photo request with an undefined id while loading, then the real one", a
   );
   renderAt("pen");
   expect(photoSrcs().some((src) => src?.includes("undefined"))).toBe(false);
-  expect(await screen.findByText("Name : Pen")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Pen" })).toBeInTheDocument();
   expect(photoSrcs()).toContain("/api/v1/product/product-photo/p1");
 });
 

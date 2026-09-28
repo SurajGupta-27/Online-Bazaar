@@ -1,6 +1,7 @@
 import React from "react";
 import Layout from "./../components/Layout/Layout";
 import { formatPrice } from "../utils/formatPrice";
+import { BRAND } from "../brand";
 import { useCart, cartQuantity, maxCartQuantity } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
@@ -69,7 +70,7 @@ const CartPage = () => {
       order_id: payment.razorpayOrderId,
       amount: payment.amount,
       currency: payment.currency,
-      name: "Ecommerce App",
+      name: BRAND.name,
       description: `Order ${order._id.slice(-8).toUpperCase()}`,
       prefill: {
         name: auth.user.name,

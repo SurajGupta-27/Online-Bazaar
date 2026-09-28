@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "./../components/Layout/Layout";
-import { formatPrice } from "../utils/formatPrice";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { Checkbox, Radio } from "antd";
 import { Prices } from "../components/Prices";
-import { useCart } from "../context/cart";
-import toast from "react-hot-toast";
+import ProductCard from "../components/Product/ProductCard";
+import { BiCategory, BiPackage, BiShieldQuarter } from "react-icons/bi";
+import { BRAND } from "../brand";
 const HomePage = () => {
-  const navigate = useNavigate();
-  const [, , addToCart] = useCart();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [checked, setChecked] = useState([]);
@@ -104,106 +102,144 @@ const HomePage = () => {
     setChecked([]);
     setRadio([]);
   };
+  const shopNow = () =>
+    document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
+
   return (
-    <Layout title={"ALl Products - Best offers "}>
-      <div className="container-fluid row mt-3">
-        <div className="col-md-2">
-          <h4 className="text-center">Filter By Category</h4>
-          <div className="d-flex flex-column">
-            {categories?.map((c) => (
-              <Checkbox
-                key={c._id}
-                checked={checked.includes(c._id)}
-                onChange={(e) => handleFilter(e.target.checked, c._id)}
-              >
-                {c.name}
-              </Checkbox>
-            ))}
-          </div>
-          {/* price filter */}
-          <h4 className="text-center mt-4">Filter By Price</h4>
-          <div className="d-flex flex-column">
-            <Radio.Group value={radio} onChange={(e) => setRadio(e.target.value)}>
-              {Prices?.map((p) => (
-                <div key={p._id}>
-                  <Radio value={p.array}>{p.name}</Radio>
-                </div>
-              ))}
-            </Radio.Group>
-          </div>
-          <div className="d-flex flex-column">
-            <button
-              className="btn btn-danger"
-              onClick={resetFilters}
-            >
-              RESET FILTERS
-            </button>
-          </div>
-        </div>
-        <div className="col-md-9 offset-1">
-          <h1 className="text-center">All Products</h1>
-          {error && <div className="alert alert-warning" role="alert">{error}</div>}
-          {!loading && !error && products.length === 0 && (
-            <div className="empty-state text-center p-5">
-              {filtersActive ? (
-                <h3>No products match these filters</h3>
-              ) : (
-                <>
-                  <h3>No products yet</h3>
-                  <p className="text-muted">Add products from the admin dashboard once MongoDB is connected.</p>
-                </>
-              )}
-            </div>
-          )}
-          <div className="d-flex flex-wrap">
-            {products?.map((p) => (
-              <div className="card m-2" style={{ width: "18rem" }} key={p._id}>
-                <img
-                  src={`/api/v1/product/product-photo/${p._id}`}
-                  className="card-img-top"
-                  alt={p.name}
-                />
-                <div className="card-body">
-                  <h5 className="card-title">{p.name}</h5>
-                  <p className="card-text">
-                    {p.description.substring(0, 30)}...
-                  </p>
-                  <p className="card-text">{formatPrice(p.price)}</p>
-                  <button
-                    className="btn btn-primary ms-1"
-                    onClick={() => navigate(`/product/${p.slug}`)}
-                  >
-                    More Details
-                  </button>
-                  <button
-                    className="btn btn-secondary ms-1"
-                    onClick={() => {
-                      const added = addToCart(p);
-                      toast[added ? "success" : "error"](
-                        added ? "Item added to cart" : "Item is already in cart"
-                      );
-                    }}
-                  >
-                    ADD TO CART
-                  </button>
-                </div>
+    <Layout>
+      <div className="container">
+        <section className="hero">
+          <div className="hero-grid">
+            <div>
+              <span className="hero-eyebrow">Welcome to {BRAND.name}</span>
+              <h1>Everything you love, at prices you'll love more.</h1>
+              <p>
+                Shop electronics, fashion, beauty, home essentials and more, all
+                priced in rupees, with Cash on Delivery or secure online payment.
+              </p>
+              <div className="hero-actions">
+                <button className="btn btn-light" onClick={shopNow}>
+                  Shop now
+                </button>
+                <Link to="/categories" className="btn btn-outline-light">
+                  Browse categories
+                </Link>
               </div>
-            ))}
-          </div>
-          <div className="m-2 p-3">
-            {!filtersActive && products.length < total && (
-              <button
-                className="btn btn-warning"
-                disabled={loading}
-                onClick={(e) => {
-                  e.preventDefault();
-                  loadMore();
-                }}
-              >
-                {loading ? "Loading ..." : "Loadmore"}
-              </button>
+            </div>
+            {categories.length > 0 && (
+              <nav className="hero-categories" aria-label="Popular categories">
+                {categories.slice(0, 6).map((c) => (
+                  <Link key={c._id} to={`/category/${c.slug}`} className="hero-category">
+                    {c.name}
+                  </Link>
+                ))}
+              </nav>
             )}
           </div>
+        </section>
+
+        <section className="trust-strip" aria-label="Why shop with us">
+          <div className="trust-item">
+            <span className="trust-icon" aria-hidden="true"><BiPackage /></span>
+            <div>
+              <strong>Cash on Delivery</strong>
+              <span>Pay when your order arrives</span>
+            </div>
+          </div>
+          <div className="trust-item">
+            <span className="trust-icon" aria-hidden="true"><BiShieldQuarter /></span>
+            <div>
+              <strong>Secure payments</strong>
+              <span>UPI, cards and netbanking via Razorpay</span>
+            </div>
+          </div>
+          <div className="trust-item">
+            <span className="trust-icon" aria-hidden="true"><BiCategory /></span>
+            <div>
+              <strong>{total > 0 ? `${total} products` : "Growing catalogue"}</strong>
+              <span>
+                {categories.length > 0
+                  ? `Across ${categories.length} ${categories.length === 1 ? "category" : "categories"}`
+                  : "New products added regularly"}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <div className="shop-layout" id="products">
+          <aside className="filter-panel">
+            <h4>Category</h4>
+            <div className="filter-group">
+              {categories?.map((c) => (
+                <Checkbox
+                  key={c._id}
+                  checked={checked.includes(c._id)}
+                  onChange={(e) => handleFilter(e.target.checked, c._id)}
+                >
+                  {c.name}
+                </Checkbox>
+              ))}
+            </div>
+            <h4>Price</h4>
+            <div className="filter-group">
+              <Radio.Group value={radio} onChange={(e) => setRadio(e.target.value)}>
+                {Prices?.map((p) => (
+                  <div key={p._id}>
+                    <Radio value={p.array}>{p.name}</Radio>
+                  </div>
+                ))}
+              </Radio.Group>
+            </div>
+            <button
+              className="btn btn-outline-primary w-100 mt-3"
+              onClick={resetFilters}
+              disabled={!filtersActive}
+            >
+              Reset filters
+            </button>
+          </aside>
+          <section>
+            <div className="section-header">
+              <h2 className="section-heading">
+                {filtersActive ? "Filtered products" : "All products"}
+              </h2>
+              {!filtersActive && total > 0 && (
+                <span className="text-muted">{total} items</span>
+              )}
+            </div>
+            {error && <div className="alert alert-warning" role="alert">{error}</div>}
+            {!loading && !error && products.length === 0 && (
+              <div className="empty-state">
+                {filtersActive ? (
+                  <h3>No products match these filters</h3>
+                ) : (
+                  <>
+                    <h3>No products yet</h3>
+                    <p className="text-muted">Add products from the admin dashboard once MongoDB is connected.</p>
+                  </>
+                )}
+              </div>
+            )}
+            <div className="product-grid">
+              {products?.map((p) => (
+                <ProductCard key={p._id} product={p} />
+              ))}
+            </div>
+            {!filtersActive && products.length < total && (
+              <div className="load-more">
+                <button
+                  className="btn btn-primary px-4"
+                  disabled={loading}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    loadMore();
+                  }}
+                >
+                  {loading ? "Loading ..." : "Load more"}
+                </button>
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </Layout>

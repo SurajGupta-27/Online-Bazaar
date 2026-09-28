@@ -22,7 +22,7 @@ const Header = () => {
   };
   return (
     <>
-      <nav className="navbar navbar-expand-lg bg-body-tertiary">
+      <nav className="navbar navbar-expand-lg sticky-top">
         <div className="container-fluid">
           <button
             className="navbar-toggler"
@@ -37,8 +37,10 @@ const Header = () => {
           </button>
           <div className="collapse navbar-collapse" id="navbarTogglerDemo01">
             <Link to="/" className="navbar-brand brand-lockup">
-              <span className="brand-mark" aria-hidden="true">E</span>
-              <span>Ecommerce App</span>
+              <span className="brand-mark" aria-hidden="true">OB</span>
+              <span className="brand-name">
+                Online <span className="brand-accent">Bazaar</span>
+              </span>
             </Link>
             <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
               <SearchInput />

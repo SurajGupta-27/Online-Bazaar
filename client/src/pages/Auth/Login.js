@@ -39,7 +39,7 @@ const Login = () => {
     }
   };
   return (
-    <Layout title="Login - Ecommerce App">
+    <Layout title="Login">
       <div className="form-container ">
         <form onSubmit={handleSubmit}>
           <h4 className="title">LOGIN FORM</h4>

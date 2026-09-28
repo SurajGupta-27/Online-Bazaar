@@ -1,25 +1,25 @@
 import React from "react";
 import Layout from "../components/Layout/Layout";
+import { BRAND } from "../brand";
 
 const About = () => {
   return (
-    <Layout title={"About us - Ecommer app"}>
-      <div className="row contactus ">
-        <div className="col-md-6 ">
-          <img
-            src="/images/about.jpeg"
-            alt="contactus"
-            style={{ width: "100%" }}
-          />
-        </div>
-        <div className="col-md-4">
-          <p className="text-justify mt-2">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Ducimus
-            officiis obcaecati esse tempore unde ratione, eveniet mollitia,
-            perferendis eius temporibus dicta blanditiis doloremque explicabo
-            quasi sunt vero optio cum aperiam vel consectetur! Laborum enim
-            accusantium atque, excepturi sapiente amet! Tenetur ducimus aut
-            commodi illum quidem neque tempora nam.
+    <Layout title={"About Us"}>
+      <div className="container info-page">
+        <img src="/about.jpeg" alt="Shopping bags and parcels" />
+        <div>
+          <h1>About {BRAND.name}</h1>
+          <p>
+            {BRAND.name} is an online store for everyday shopping: electronics,
+            fashion, beauty, furniture, home and kitchen essentials, and more,
+            all in one place with prices in Indian rupees.
+          </p>
+          <p>
+            Browse by category, filter by price, add what you like to your cart
+            and pay online through Razorpay or choose Cash on Delivery.
+          </p>
+          <p>
+            {BRAND.name} is designed and built by {BRAND.owner}.
           </p>
         </div>
       </div>

@@ -45,14 +45,14 @@ test("load more appends the next page, and switching category starts over", asyn
   );
 
   expect(await screen.findByText("Book 2")).toBeInTheDocument();
-  expect(screen.getByText("3 result found")).toBeInTheDocument();
-  fireEvent.click(screen.getByText("Loadmore"));
+  expect(screen.getByText("3 products")).toBeInTheDocument();
+  fireEvent.click(screen.getByText("Load more"));
   expect(await screen.findByText("Book 3")).toBeInTheDocument();
   expect(screen.getByText("Book 1")).toBeInTheDocument();
-  expect(screen.queryByText("Loadmore")).toBeNull();
+  expect(screen.queryByText("Load more")).toBeNull();
 
   fireEvent.click(screen.getByText("go to toys"));
   expect(await screen.findByText("Toy 1")).toBeInTheDocument();
   expect(screen.queryByText("Book 1")).toBeNull();
-  expect(screen.getByText("1 result found")).toBeInTheDocument();
+  expect(screen.getByText("1 product")).toBeInTheDocument();
 });

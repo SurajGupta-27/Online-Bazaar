@@ -55,11 +55,11 @@ app.use("/api/v1/order", orderRoutes);
 
 //rest api
 app.get("/", (req, res) => {
-  res.send("<h1>Welcome to ecommerce app</h1>");
+  res.send("<h1>Online Bazaar API</h1>");
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).send({ success: true, service: "ecommerce-api" });
+  res.status(200).send({ success: true, service: "online-bazaar-api" });
 });
 
 // Last-resort error handler: log details, never send them to the client.
