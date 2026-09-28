@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { escapeRegex } from "./escapeRegex.js";
 
 export const hashPassword = async (password) => {
   try {
@@ -19,6 +20,28 @@ export const comparePassword = async (password, hashedPassword) => {
 export const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 // Security answers are matched case-insensitively ("Cricket" == "cricket").
-export const normalizeAnswer = (answer) => answer.trim().toLowerCase();
+// Invisible characters (zero-width spaces, BOM) that sneak in through
+// copy-paste or old data are dropped, and look-alike forms are unified (NFKC).
+export const normalizeAnswer = (answer) =>
+  String(answer)
+    .normalize("NFKC")
+    .replace(/[​-‍⁠﻿]/g, "")
+    .trim()
+    .toLowerCase();
 
 export const isBcryptHash = (value) => /^\$2[aby]\$\d{2}\$/.test(value || "");
+
+export const normalizeEmail = (email) => String(email).trim().toLowerCase();
+
+// Accounts created before emails were lowercased on save may still hold
+// "User@Example.com" or stray spaces, which an exact lookup misses.
+export const findUserByEmail = async (model, email) => {
+  const normalized = normalizeEmail(email);
+  const user = await model.findOne({ email: normalized });
+  if (user) return user;
+  // A RegExp object (not a $regex string) so Mongoose's lowercase setter
+  // doesn't rewrite the pattern.
+  return model.findOne({
+    email: new RegExp(`^\\s*${escapeRegex(normalized)}\\s*$`, "i"),
+  });
+};

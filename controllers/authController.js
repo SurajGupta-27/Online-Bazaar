@@ -2,9 +2,11 @@ import userModel from "../models/userModel.js";
 import {
   comparePassword,
   DUMMY_HASH,
+  findUserByEmail,
   hashPassword,
   isBcryptHash,
   normalizeAnswer,
+  normalizeEmail,
 } from "./../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
 
@@ -95,8 +97,7 @@ export const loginController = async (req, res) => {
       });
     }
 
-    email = email.trim().toLowerCase();
-    const user = await userModel.findOne({ email });
+    const user = await findUserByEmail(userModel, email);
 
     // Same status, message and timing whether or not the email exists.
     const match = await comparePassword(password, user?.password || DUMMY_HASH);
@@ -107,11 +108,17 @@ export const loginController = async (req, res) => {
       });
     }
 
-    // Upgrade security answers saved in plain text before they were hashed.
+    // Upgrade legacy data: plain-text security answers and un-normalized emails.
+    let upgraded = false;
     if (!isBcryptHash(user.answer)) {
       user.answer = await hashPassword(normalizeAnswer(user.answer));
-      await user.save();
+      upgraded = true;
     }
+    if (user.email !== normalizeEmail(user.email)) {
+      user.email = normalizeEmail(user.email);
+      upgraded = true;
+    }
+    if (upgraded) await user.save();
 
     const token = JWT.sign({ _id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -151,7 +158,7 @@ export const forgotPasswordController = async (req, res) => {
     }
 
     const normalizedAnswer = normalizeAnswer(answer);
-    const user = await userModel.findOne({ email: email.trim().toLowerCase() });
+    const user = await findUserByEmail(userModel, email);
 
     // Accounts created before answers were hashed still hold plain text;
     // those are compared directly and upgraded to a hash below.
@@ -169,6 +176,7 @@ export const forgotPasswordController = async (req, res) => {
 
     const update = { password: await hashPassword(newPassword) };
     if (legacyAnswer) update.answer = await hashPassword(normalizedAnswer);
+    if (user.email !== normalizeEmail(user.email)) update.email = normalizeEmail(user.email);
     await userModel.findByIdAndUpdate(user._id, update, { runValidators: true });
 
     res.status(200).send({
