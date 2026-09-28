@@ -47,6 +47,12 @@ const productSchema = new mongoose.Schema(
     shipping: {
       type: Boolean,
     },
+    // Where an imported product came from, e.g. "dummyjson:12", so imports
+    // never create duplicates. Products added by an admin have none.
+    externalId: {
+      type: String,
+      index: { unique: true, sparse: true },
+    },
   },
   {
     timestamps: true,

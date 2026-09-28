@@ -10,7 +10,8 @@
     "client": "npm start --prefix ./client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "test": "node tests/run.mjs",
-    "migrate:photos": "node scripts/migratePhotosToCloudinary.mjs"
+    "migrate:photos": "node scripts/migratePhotosToCloudinary.mjs",
+    "seed:dummyjson": "node scripts/seedDummyJson.mjs"
   },
   "repository": {
     "type": "git",

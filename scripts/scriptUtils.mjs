@@ -2,7 +2,7 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export const args = process.argv.slice(2);
 export const APPLY = args.includes("--apply");
