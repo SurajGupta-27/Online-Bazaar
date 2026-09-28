@@ -9,7 +9,8 @@
     "server": "nodemon server.js",
     "client": "npm start --prefix ./client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "migrate:photos": "node scripts/migratePhotosToCloudinary.mjs"
   },
   "repository": {
     "type": "git",

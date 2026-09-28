@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useCart } from "../../context/cart";
 import { formatPrice } from "../../utils/formatPrice";
+import { productImage } from "../../utils/productImage";
 
 // The product tile used by every product listing (home, category, search,
 // similar products), so they all look and behave the same.
@@ -15,7 +16,7 @@ const ProductCard = ({ product }) => {
     <div className="product-card">
       <button type="button" className="product-card-media" onClick={open} aria-label={product.name}>
         <img
-          src={`/api/v1/product/product-photo/${product._id}`}
+          src={productImage(product, 400)}
           alt={product.name}
           loading="lazy"
         />

@@ -6,6 +6,7 @@ import axios from "axios";
 import { errorMessage } from "../../utils/errorMessage";
 import { Select } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
+import ImagePicker, { appendImages, itemsFromImages } from "../../components/Form/ImagePicker";
 const { Option } = Select;
 
 const UpdateProduct = () => {
@@ -18,7 +19,8 @@ const UpdateProduct = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
   const [shipping, setShipping] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photos, setPhotos] = useState([]);
+  const [legacyMissing, setLegacyMissing] = useState(false);
   const [id, setId] = useState("");
 
   //get single product
@@ -29,6 +31,7 @@ const UpdateProduct = () => {
       );
       setName(data.product.name);
       setId(data.product._id);
+      setPhotos(itemsFromImages(data.product.images));
       setDescription(data.product.description);
       setPrice(data.product.price);
       setQuantity(data.product.quantity);
@@ -70,7 +73,7 @@ const UpdateProduct = () => {
       productData.append("description", description);
       productData.append("price", price);
       productData.append("quantity", quantity);
-      photo && productData.append("photo", photo);
+      appendImages(productData, photos);
       productData.append("category", category);
       productData.append("shipping", shipping);
       const { data } = await axios.put(
@@ -131,41 +134,20 @@ const UpdateProduct = () => {
                   </Option>
                 ))}
               </Select>
-              <div className="mb-3">
-                <label className="btn btn-outline-secondary col-md-12">
-                  {photo ? photo.name : "Upload Photo"}
-                  <input
-                    type="file"
-                    name="photo"
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                    onChange={(e) => setPhoto(e.target.files[0])}
-                    hidden
+              {id && photos.length === 0 && !legacyMissing && (
+                <div className="text-center mb-2">
+                  <img
+                    src={`/api/v1/product/product-photo/${id}`}
+                    alt="Current product"
+                    height="160"
+                    onError={() => setLegacyMissing(true)}
                   />
-                </label>
-              </div>
-              <div className="mb-3">
-                {photo ? (
-                  <div className="text-center">
-                    <img
-                      src={URL.createObjectURL(photo)}
-                      alt="product_photo"
-                      height={"200px"}
-                      className="img img-responsive"
-                    />
-                  </div>
-                ) : (
-                  id && (
-                    <div className="text-center">
-                      <img
-                        src={`/api/v1/product/product-photo/${id}`}
-                        alt="product_photo"
-                        height={"200px"}
-                        className="img img-responsive"
-                      />
-                    </div>
-                  )
-                )}
-              </div>
+                  <p className="text-muted small">
+                    Current photo (stored before Cloudinary). Uploading new photos replaces it.
+                  </p>
+                </div>
+              )}
+              <ImagePicker items={photos} onChange={setPhotos} />
               <div className="mb-3">
                 <input
                   type="text"

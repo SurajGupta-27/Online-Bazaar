@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { Pagination } from "antd";
 import { errorMessage } from "../../utils/errorMessage";
+import { productImage } from "../../utils/productImage";
 
 const PER_PAGE = 12;
 
@@ -59,7 +60,7 @@ const Products = () => {
               >
                 <div className="card m-2" style={{ width: "18rem" }}>
                   <img
-                    src={`/api/v1/product/product-photo/${p._id}`}
+                    src={productImage(p, 400)}
                     className="card-img-top"
                     alt={p.name}
                   />

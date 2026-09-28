@@ -8,7 +8,9 @@ export async function adminSetup(api, db) {
 }
 // 1x1 PNG
 export const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-export function productForm(categoryId, { name = "Book", photo, type = "image/png", filename = "p.png" } = {}) {
+// photo: one file in the old "photo" field; photos: several in "photos";
+// images: the JSON list of existing image ids to keep (update only).
+export function productForm(categoryId, { name = "Book", photo, type = "image/png", filename = "p.png", photos = [], images } = {}) {
   const fd = new FormData();
   if (name) fd.append("name", name);
   fd.append("description", "desc");
@@ -17,6 +19,8 @@ export function productForm(categoryId, { name = "Book", photo, type = "image/pn
   fd.append("category", categoryId);
   fd.append("shipping", "1");
   if (photo) fd.append("photo", new Blob([photo], { type }), filename);
+  photos.forEach((p, i) => fd.append("photos", new Blob([p.bytes || PNG], { type: p.type || "image/png" }), p.filename || `p${i}.png`));
+  if (images !== undefined) fd.append("images", JSON.stringify(images));
   return fd;
 }
 export { ObjectId };

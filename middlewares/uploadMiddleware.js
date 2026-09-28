@@ -1,7 +1,10 @@
 import fs from "fs";
 import formidable from "express-formidable";
 
+// Each image must be under MAX_PHOTO_BYTES, and a product can have up to
+// MAX_PHOTOS of them.
 export const MAX_PHOTO_BYTES = 1000000;
+export const MAX_PHOTOS = 6;
 
 // Raster formats only: SVG can carry scripts, so it is deliberately excluded.
 export const ALLOWED_PHOTO_TYPES = [
@@ -13,10 +16,13 @@ export const ALLOWED_PHOTO_TYPES = [
 ];
 
 // formidable aborts (and deletes the partial file) as soon as a limit is
-// exceeded, instead of writing the whole upload to disk first.
+// exceeded, instead of writing the whole upload to disk first. Its
+// maxFileSize counts all files in the request together, so the per-image
+// limit is checked again in the product controller.
 const parseForm = formidable({
-  maxFileSize: MAX_PHOTO_BYTES,
+  maxFileSize: MAX_PHOTO_BYTES * MAX_PHOTOS,
   maxFieldsSize: 200 * 1024,
+  multiples: true,
 });
 
 const removeUploads = (files = {}) =>
@@ -36,7 +42,9 @@ export const productUpload = (req, res, next) => {
       const tooLarge = /maxFileSize|maxFieldsSize/.test(err.message);
       return res.status(tooLarge ? 413 : 400).send({
         success: false,
-        message: tooLarge ? "Photo must be less than 1MB" : "Invalid form data",
+        message: tooLarge
+          ? `Each photo must be less than 1MB (at most ${MAX_PHOTOS} photos)`
+          : "Invalid form data",
       });
     }
     res.on("close", () => removeUploads(req.files));

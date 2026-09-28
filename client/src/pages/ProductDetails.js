@@ -6,11 +6,13 @@ import { useParams, Link } from "react-router-dom";
 import { useCart } from "../context/cart";
 import toast from "react-hot-toast";
 import ProductCard from "../components/Product/ProductCard";
+import { productImages } from "../utils/productImage";
 const ProductDetails = () => {
   const params = useParams();
   const [, , addToCart] = useCart();
   const [product, setProduct] = useState({});
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [activeImage, setActiveImage] = useState(0);
 
   //initalp details
   useEffect(() => {
@@ -23,6 +25,7 @@ const ProductDetails = () => {
         `/api/v1/product/get-product/${params.slug}`
       );
       setProduct(data?.product || {});
+      setActiveImage(0);
       if (data?.product?.category?._id) {
         getSimilarProduct(data.product._id, data.product.category._id);
       }
@@ -42,6 +45,8 @@ const ProductDetails = () => {
     }
   };
   const inStock = Number(product.quantity) > 0;
+  const images = productImages(product, 900);
+  const thumbnails = productImages(product, 160);
   return (
     <Layout title={product.name}>
       <div className="container">
@@ -54,10 +59,26 @@ const ProductDetails = () => {
           <div className="product-detail">
             <div className="product-detail-media">
               <img
-                src={`/api/v1/product/product-photo/${product._id}`}
+                src={images[activeImage] || images[0]}
                 className="main-image"
                 alt={product.name}
               />
+              {images.length > 1 && (
+                <div className="gallery-thumbs" role="group" aria-label="Product photos">
+                  {thumbnails.map((src, index) => (
+                    <button
+                      type="button"
+                      key={src}
+                      className={`gallery-thumb${index === activeImage ? " selected" : ""}`}
+                      aria-label={`Show photo ${index + 1} of ${images.length}`}
+                      aria-pressed={index === activeImage}
+                      onClick={() => setActiveImage(index)}
+                    >
+                      <img src={src} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="product-detail-info">
               {product.category?.name && (

@@ -27,6 +27,19 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    // Cloudinary images; the first one is the main image.
+    images: {
+      type: [
+        {
+          _id: false,
+          url: { type: String, required: true },
+          publicId: { type: String, required: true },
+        },
+      ],
+      default: [],
+    },
+    // Legacy: photos uploaded before Cloudinary, stored in MongoDB. Moved to
+    // `images` by scripts/migratePhotosToCloudinary.mjs.
     photo: {
       data: Buffer,
       contentType: String,
@@ -37,7 +50,7 @@ const productSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    // Photos are served only by GET /product-photo/:pid, never inside JSON.
+    // Legacy photo bytes are served only by GET /product-photo/:pid, never inside JSON.
     toJSON: {
       transform: (doc, ret) => {
         delete ret.photo;

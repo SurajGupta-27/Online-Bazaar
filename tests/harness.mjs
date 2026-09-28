@@ -16,6 +16,21 @@ export const check = (label, cond, extra = "") => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${extra ? "  -- " + extra : ""}`);
 };
 
+// Runs a scripts/*.mjs file against the test database and returns its output.
+// Like the server, it gets blank Cloudinary settings unless env provides them.
+export function runScript(script, args, env) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [script, ...args], {
+      cwd: PROJECT,
+      env: { ...process.env, CLOUDINARY_CLOUD_NAME: "", CLOUDINARY_API_KEY: "", CLOUDINARY_API_SECRET: "", CLOUDINARY_API_URL: "http://127.0.0.1:9/v1_1", ...env },
+    });
+    let output = "";
+    child.stdout.on("data", (d) => (output += d));
+    child.stderr.on("data", (d) => (output += d));
+    child.on("close", (code) => resolve({ code, output }));
+  });
+}
+
 export async function withServer(fn, { port = 8099, env = {} } = {}) {
   const mongo = await MongoMemoryServer.create();
   const uri = mongo.getUri() + "shop";
@@ -34,6 +49,12 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       RAZORPAY_KEY_ID: "",
       RAZORPAY_KEY_SECRET: "",
       RAZORPAY_API_URL: "http://127.0.0.1:9/v1",
+      // Same for Cloudinary: tests that upload images start the mock in
+      // tests/mockCloudinary.mjs and pass cloudinaryEnv(mock).
+      CLOUDINARY_CLOUD_NAME: "",
+      CLOUDINARY_API_KEY: "",
+      CLOUDINARY_API_SECRET: "",
+      CLOUDINARY_API_URL: "http://127.0.0.1:9/v1_1",
       ...env,
     },
   });
@@ -50,10 +71,11 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       if (i > 100) throw new Error("server did not start\n" + logs);
       await new Promise((r) => setTimeout(r, 100));
     }
-    const api = async (method, path, body, { token, headers = {} } = {}) => {
+    const api = async (method, path, body, { token, headers = {}, redirect = "follow" } = {}) => {
       const isForm = body instanceof FormData;
       const res = await fetch(base + path, {
         method,
+        redirect,
         headers: {
           ...(body && !isForm ? { "Content-Type": "application/json" } : {}),
           ...(token ? { Authorization: token } : {}),
@@ -66,7 +88,7 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       try { json = JSON.parse(text); } catch {}
       return { status: res.status, json, text, headers: res.headers, raw: res };
     };
-    await fn({ api, db, base, logs: () => logs });
+    await fn({ api, db, base, uri, logs: () => logs });
   } finally {
     server.kill();
     await client.close();

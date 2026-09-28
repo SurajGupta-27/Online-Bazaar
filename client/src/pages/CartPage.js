@@ -2,6 +2,7 @@ import React from "react";
 import Layout from "./../components/Layout/Layout";
 import { formatPrice } from "../utils/formatPrice";
 import { BRAND } from "../brand";
+import { productImage } from "../utils/productImage";
 import { useCart, cartQuantity, maxCartQuantity } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
@@ -159,7 +160,7 @@ const CartPage = () => {
               <div className="row mb-2 p-3 card flex-row" key={p._id}>
                 <div className="col-md-4">
                   <img
-                    src={`/api/v1/product/product-photo/${p._id}`}
+                    src={productImage(p, 200)}
                     className="card-img-top"
                     alt={p.name}
                     width="100px"

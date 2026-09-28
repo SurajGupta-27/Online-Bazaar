@@ -13,14 +13,14 @@ jest.mock("axios", () => ({
   interceptors: { response: { use: jest.fn(), eject: jest.fn() } },
 }));
 
-const renderWithShipping = (shipping, category = { _id: "c1", name: "Office" }) => {
+const renderWithShipping = (shipping, category = { _id: "c1", name: "Office" }, images = []) => {
   axios.get.mockImplementation((url) => {
     if (url === "/api/v1/product/get-product/pen") {
       return Promise.resolve({
         data: {
           product: {
             _id: "p1", name: "Pen", description: "Blue", price: 2, quantity: 5,
-            shipping, category,
+            shipping, category, images,
           },
         },
       });
@@ -66,4 +66,18 @@ test("a product whose category was deleted still loads for editing", async () =>
   renderWithShipping(true, null);
   expect(await screen.findByDisplayValue("Pen")).toBeInTheDocument();
   expect(screen.getByText("Select a category")).toBeInTheDocument();
+});
+
+test("saved images load into the picker and their order is submitted", async () => {
+  const images = ["one", "two"].map((id) => ({
+    url: `https://res.cloudinary.com/demo/image/upload/v1/${id}.png`,
+    publicId: id,
+  }));
+  renderWithShipping(true, undefined, images);
+  fireEvent.click(await screen.findByRole("button", { name: "Make Photo 2 the main image" }));
+  fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+  await waitFor(() => expect(axios.put).toHaveBeenCalled());
+  const body = axios.put.mock.calls[0][1];
+  expect(JSON.parse(body.get("images"))).toEqual(["two", "one"]);
+  expect(body.getAll("photos")).toEqual([]);
 });

@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import os from "node:os";
-import { withServer, check } from "./harness.mjs";
+import { withServer, check, ObjectId } from "./harness.mjs";
 import { adminSetup, PNG, productForm } from "./fixtures.mjs";
+import { startMockCloudinary, cloudinaryEnv } from "./mockCloudinary.mjs";
+const mock = await startMockCloudinary();
 const uploads = () => new Set(fs.readdirSync(os.tmpdir()).filter((f) => f.startsWith("upload_")));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await withServer(async ({ api, db, base }) => {
@@ -34,8 +36,10 @@ await withServer(async ({ api, db, base }) => {
   check("CORS allows the frontend origin", good.headers.get("access-control-allow-origin") === "http://localhost:3000");
   check("CORS gives other origins no access", !evil.headers.get("access-control-allow-origin"), evil.headers.get("access-control-allow-origin"));
 
-  const photo = await api("GET", `/api/v1/product/product-photo/${pid}`);
-  check("photo served with cross-origin resource policy", photo.status === 200 && photo.headers.get("cross-origin-resource-policy") === "cross-origin");
+  const legacy = new ObjectId();
+  await db.collection("products").insertOne({ _id: legacy, name: "Old", slug: "old", description: "d", price: 1, category: new ObjectId(categoryId), quantity: 1, photo: { data: PNG, contentType: "image/png" } });
+  const photo = await api("GET", `/api/v1/product/product-photo/${legacy}`);
+  check("legacy photo served with cross-origin resource policy", photo.status === 200 && photo.headers.get("cross-origin-resource-policy") === "cross-origin");
 
   const cast = await api("GET", "/api/v1/product/product-photo/not-an-id");
   check("invalid photo id -> 404 without error details", cast.status === 404 && !("error" in (cast.json || {})), cast.text);
@@ -44,4 +48,5 @@ await withServer(async ({ api, db, base }) => {
   check("malformed JSON -> 400 generic message, no stack", badJson.status === 400 && !/at |SyntaxError/.test(badText), `${badJson.status} ${badText}`);
   const del = await api("DELETE", "/api/v1/category/delete-category/nope", null, { token });
   check("category error hides details", del.status === 404 && !("error" in del.json), del.text);
-});
+}, { env: cloudinaryEnv(mock) });
+await mock.close();

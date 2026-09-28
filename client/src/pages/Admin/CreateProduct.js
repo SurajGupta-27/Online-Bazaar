@@ -6,6 +6,7 @@ import axios from "axios";
 import { errorMessage } from "../../utils/errorMessage";
 import { Select } from "antd";
 import { useNavigate } from "react-router-dom";
+import ImagePicker, { appendImages } from "../../components/Form/ImagePicker";
 const { Option } = Select;
 
 const CreateProduct = () => {
@@ -17,7 +18,7 @@ const CreateProduct = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
   const [shipping, setShipping] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photos, setPhotos] = useState([]);
 
   //get all category
   const getAllCategory = async () => {
@@ -45,7 +46,7 @@ const CreateProduct = () => {
       productData.append("description", description);
       productData.append("price", price);
       productData.append("quantity", quantity);
-      photo && productData.append("photo", photo);
+      appendImages(productData, photos);
       productData.append("category", category);
       productData.append("shipping", shipping);
       const { data } = await axios.post(
@@ -90,30 +91,7 @@ const CreateProduct = () => {
                   </Option>
                 ))}
               </Select>
-              <div className="mb-3">
-                <label className="btn btn-outline-secondary col-md-12">
-                  {photo ? photo.name : "Upload Photo"}
-                  <input
-                    type="file"
-                    name="photo"
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                    onChange={(e) => setPhoto(e.target.files[0])}
-                    hidden
-                  />
-                </label>
-              </div>
-              <div className="mb-3">
-                {photo && (
-                  <div className="text-center">
-                    <img
-                      src={URL.createObjectURL(photo)}
-                      alt="product_photo"
-                      height={"200px"}
-                      className="img img-responsive"
-                    />
-                  </div>
-                )}
-              </div>
+              <ImagePicker items={photos} onChange={setPhotos} />
               <div className="mb-3">
                 <input
                   type="text"
