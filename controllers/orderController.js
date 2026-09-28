@@ -1,10 +1,66 @@
 import mongoose from "mongoose";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
+import {
+  createRazorpayOrder,
+  isValidPaymentSignature,
+  razorpayConfigured,
+  razorpayKeyId,
+  toPaise,
+} from "../helpers/razorpay.js";
+
+const PAYMENT_METHODS = ["cod", "razorpay"];
+
+// How long an unpaid online order holds its stock. Checkout closes itself five
+// minutes earlier, so a payment can't start after its hold has been released.
+const holdSeconds = () => Number(process.env.PAYMENT_HOLD_SECONDS) || 15 * 60;
+const checkoutTimeoutSeconds = () => Math.max(60, holdSeconds() - 5 * 60);
+
+const restock = (items) =>
+  Promise.all(
+    items.map((item) =>
+      productModel.updateOne({ _id: item.product }, { $inc: { quantity: item.quantity } })
+    )
+  );
+
+// Atomically marks a matching order's stock as released and applies `update`,
+// then returns its items to stock. The stockReleased guard means that however
+// many paths race (popup closed, hold expired, admin cancel), stock comes back
+// once. Returns the updated order, or null if nothing matched.
+const releaseOrder = async (filter, update) => {
+  const order = await orderModel.findOneAndUpdate(
+    { ...filter, stockReleased: { $ne: true } },
+    { ...update, stockReleased: true },
+    { new: true }
+  );
+  if (order) await restock(order.items);
+  return order;
+};
+
+const cancelUnpaid = { status: "cancelled", paymentStatus: "failed" };
+const unpaidOnline = { paymentMethod: "razorpay", paymentStatus: "pending" };
+
+// Releases online orders whose payment window has passed. Run on a timer by server.js.
+export const releaseExpiredPayments = async () => {
+  const expired = await orderModel
+    .find({ ...unpaidOnline, stockReleased: { $ne: true }, holdExpiresAt: { $lte: new Date() } })
+    .select("_id");
+  for (const { _id } of expired) {
+    await releaseOrder(
+      { _id, ...unpaidOnline, holdExpiresAt: { $lte: new Date() } },
+      cancelUnpaid
+    );
+  }
+  return expired.length;
+};
 
 export const createOrderController = async (req, res) => {
   try {
     const { items, shippingAddress } = req.body;
+    const paymentMethod = req.body.paymentMethod ?? "cod";
+    if (!PAYMENT_METHODS.includes(paymentMethod)) {
+      return res.status(400).send({ success: false, message: "Invalid payment method" });
+    }
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).send({ success: false, message: "Cart is empty" });
     }
@@ -12,6 +68,12 @@ export const createOrderController = async (req, res) => {
       return res.status(400).send({
         success: false,
         message: "A shipping address is required",
+      });
+    }
+    if (paymentMethod === "razorpay" && !razorpayConfigured()) {
+      return res.status(503).send({
+        success: false,
+        message: "Online payment is not available right now. Please choose Cash on Delivery.",
       });
     }
 
@@ -35,26 +97,26 @@ export const createOrderController = async (req, res) => {
         message: "One or more products are no longer available",
       });
     }
+    // Prices always come from the database, never from the client.
     const orderItems = products.map((product) => ({
       product: product._id,
       name: product.name,
       price: product.price,
       quantity: requested.get(String(product._id)),
     }));
+    const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (paymentMethod === "razorpay" && toPaise(total) < 100) {
+      return res.status(400).send({
+        success: false,
+        message: "Online payment needs an order of at least ₹1",
+      });
+    }
 
     // Reserve stock with one conditional update per product, so two orders
     // can never both take the last unit. On any failure, return what was taken.
+    // Online orders reserve here too, before checkout opens, so stock can't run
+    // out while the shopper is paying; unpaid holds are released later.
     const reserved = [];
-    const releaseReserved = () =>
-      Promise.all(
-        reserved.map((item) =>
-          productModel.updateOne(
-            { _id: item.product },
-            { $inc: { quantity: item.quantity } }
-          )
-        )
-      );
-
     let order;
     try {
       for (const item of orderItems) {
@@ -64,7 +126,7 @@ export const createOrderController = async (req, res) => {
           { projection: { _id: 1 } }
         );
         if (!updated) {
-          await releaseReserved();
+          await restock(reserved);
           return res.status(409).send({
             success: false,
             message: `${item.name} does not have enough stock`,
@@ -73,25 +135,138 @@ export const createOrderController = async (req, res) => {
         reserved.push(item);
       }
 
-      const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       order = await orderModel.create({
         user: req.user._id,
         items: orderItems,
         total,
         shippingAddress,
+        paymentMethod,
+        paymentStatus: "pending",
+        ...(paymentMethod === "razorpay" && {
+          holdExpiresAt: new Date(Date.now() + holdSeconds() * 1000),
+        }),
       });
     } catch (error) {
-      await releaseReserved();
+      await restock(reserved);
       throw error;
     }
 
-    return res.status(201).send({ success: true, message: "Order placed", order });
+    if (paymentMethod === "cod") {
+      return res.status(201).send({ success: true, message: "Order placed", order });
+    }
+
+    let razorpayOrder;
+    try {
+      razorpayOrder = await createRazorpayOrder({
+        amount: toPaise(total),
+        receipt: String(order._id),
+        notes: { orderId: String(order._id) },
+      });
+    } catch (error) {
+      console.log(error);
+      await releaseOrder({ _id: order._id, ...unpaidOnline }, cancelUnpaid);
+      return res.status(502).send({
+        success: false,
+        message: "Unable to start online payment. Please try again or choose Cash on Delivery.",
+      });
+    }
+    order = await orderModel.findByIdAndUpdate(
+      order._id,
+      { razorpayOrderId: razorpayOrder.id },
+      { new: true }
+    );
+
+    return res.status(201).send({
+      success: true,
+      message: "Order created, awaiting payment",
+      order,
+      payment: {
+        keyId: razorpayKeyId(),
+        razorpayOrderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        timeout: checkoutTimeoutSeconds(),
+      },
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).send({
       success: false,
       message: "Unable to place order",
     });
+  }
+};
+
+// Called by the client with the three values Razorpay Checkout returns.
+// The order is marked paid only if the signature proves Razorpay issued them.
+export const verifyPaymentController = async (req, res) => {
+  try {
+    const { orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body;
+    if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    const order = await orderModel.findOne({
+      _id: orderId,
+      user: req.user._id,
+      paymentMethod: "razorpay",
+    });
+    if (!order || !order.razorpayOrderId) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    // Checked against the Razorpay order id we stored, not one the client sends.
+    if (!isValidPaymentSignature(order.razorpayOrderId, paymentId, signature)) {
+      return res.status(400).send({ success: false, message: "Payment verification failed" });
+    }
+
+    const paid = { paymentStatus: "paid", razorpayPaymentId: paymentId, paidAt: new Date() };
+    const updated = await orderModel.findOneAndUpdate(
+      { _id: order._id, paymentStatus: "pending", stockReleased: { $ne: true } },
+      paid,
+      { new: true }
+    );
+    if (updated) {
+      return res.status(200).send({ success: true, message: "Payment successful", order: updated });
+    }
+
+    const current = await orderModel.findById(order._id);
+    if (current.paymentStatus === "paid" && current.razorpayPaymentId === paymentId) {
+      return res.status(200).send({ success: true, message: "Payment successful", order: current });
+    }
+    // The money arrived after the order was cancelled and its stock released.
+    // Record it and flag a refund rather than taking stock that may be sold.
+    const late = await orderModel.findOneAndUpdate(
+      { _id: order._id, paymentStatus: { $ne: "paid" } },
+      { ...paid, refundRequired: true },
+      { new: true }
+    );
+    return res.status(409).send({
+      success: false,
+      message:
+        "Your payment was received after this order was cancelled. It will be refunded.",
+      order: late || current,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ success: false, message: "Unable to verify payment" });
+  }
+};
+
+// The shopper closed Checkout without paying: cancel the order and free its stock.
+export const cancelPaymentController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    await releaseOrder({ _id: id, user: req.user._id, ...unpaidOnline }, cancelUnpaid);
+    const order = await orderModel.findOne({ _id: id, user: req.user._id });
+    if (!order) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    return res.status(200).send({ success: true, message: "Payment cancelled", order });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ success: false, message: "Unable to cancel payment" });
   }
 };
 
@@ -130,6 +305,7 @@ export const getAllOrdersController = async (req, res) => {
 
 // ADMIN: change an order's status. Cancelling returns the items to stock, and
 // a cancelled order can't be reopened (its stock has already been released).
+// Online orders can't move forward until they are paid.
 export const updateOrderStatusController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -140,32 +316,43 @@ export const updateOrderStatusController = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(404).send({ success: false, message: "Order not found" });
     }
+    const existing = await orderModel.findById(id);
+    if (!existing) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
 
-    // Only a not-yet-cancelled order changes, so stock is restored at most once.
-    const previous = await orderModel.findOneAndUpdate(
-      { _id: id, status: { $ne: "cancelled" } },
-      { status }
-    );
-    if (!previous) {
-      const existing = await orderModel.findById(id);
-      if (!existing) {
-        return res.status(404).send({ success: false, message: "Order not found" });
-      }
-      if (status !== "cancelled") {
+    if (status === "cancelled") {
+      await releaseOrder({ _id: id, status: { $ne: "cancelled" } }, { status });
+      // An online order cancelled before payment will never be paid; one
+      // cancelled after payment needs its money back.
+      await orderModel.updateOne({ _id: id, ...unpaidOnline }, { paymentStatus: "failed" });
+      await orderModel.updateOne(
+        { _id: id, paymentMethod: "razorpay", paymentStatus: "paid" },
+        { refundRequired: true }
+      );
+    } else {
+      if (existing.status === "cancelled") {
         return res.status(409).send({
           success: false,
           message: "Cancelled orders can't be reopened",
         });
       }
-    } else if (status === "cancelled") {
-      await Promise.all(
-        previous.items.map((item) =>
-          productModel.updateOne(
-            { _id: item.product },
-            { $inc: { quantity: item.quantity } }
-          )
-        )
+      if (existing.paymentMethod === "razorpay" && existing.paymentStatus !== "paid") {
+        return res.status(409).send({
+          success: false,
+          message: "This order hasn't been paid online yet",
+        });
+      }
+      const updated = await orderModel.findOneAndUpdate(
+        { _id: id, status: { $ne: "cancelled" } },
+        { status }
       );
+      if (!updated) {
+        return res.status(409).send({
+          success: false,
+          message: "Cancelled orders can't be reopened",
+        });
+      }
     }
 
     const order = await orderModel.findById(id).populate("user", "name email");
@@ -176,5 +363,40 @@ export const updateOrderStatusController = async (req, res) => {
       success: false,
       message: "Unable to update order status",
     });
+  }
+};
+
+// ADMIN: record the cash collected for a delivered Cash on Delivery order.
+export const markOrderPaidController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    const updated = await orderModel
+      .findOneAndUpdate(
+        { _id: id, paymentMethod: "cod", paymentStatus: "pending", status: "delivered" },
+        { paymentStatus: "paid", paidAt: new Date() },
+        { new: true }
+      )
+      .populate("user", "name email");
+    if (updated) {
+      return res.status(200).send({ success: true, message: "Order marked as paid", order: updated });
+    }
+
+    const existing = await orderModel.findById(id);
+    if (!existing) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    const message =
+      existing.paymentMethod !== "cod"
+        ? "Only Cash on Delivery orders can be marked as paid"
+        : existing.paymentStatus === "paid"
+        ? "This order is already paid"
+        : "Mark the order as delivered first";
+    return res.status(409).send({ success: false, message });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ success: false, message: "Unable to mark order as paid" });
   }
 };

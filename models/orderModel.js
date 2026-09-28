@@ -26,8 +26,25 @@ const orderSchema = new mongoose.Schema(
       enum: ["placed", "processing", "shipped", "delivered", "cancelled"],
       default: "placed",
     },
+    paymentMethod: { type: String, enum: ["cod", "razorpay"], default: "cod" },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
+    paidAt: Date,
+    // Online orders hold their stock until this time; unpaid holds are then released.
+    holdExpiresAt: Date,
+    // Set in the same update that returns the items to stock, so it happens once.
+    stockReleased: { type: Boolean, default: false },
+    // A payment that arrived after the order was cancelled; refund it in Razorpay.
+    refundRequired: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+orderSchema.index({ paymentMethod: 1, paymentStatus: 1, holdExpiresAt: 1 });
 
 export default mongoose.model("Order", orderSchema);

@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoute.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import { releaseExpiredPayments } from "./controllers/orderController.js";
 import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
@@ -74,6 +75,13 @@ app.use((err, req, res, next) => {
 
 //PORT
 const PORT = process.env.PORT || 8080;
+
+// Free the stock held by online orders that were never paid.
+const sweepSeconds = Number(process.env.PAYMENT_SWEEP_SECONDS) || 60;
+setInterval(() => {
+  if (mongoose.connection.readyState !== 1) return;
+  releaseExpiredPayments().catch((error) => console.log(error));
+}, sweepSeconds * 1000).unref();
 
 //run listen
 app.listen(PORT, () => {

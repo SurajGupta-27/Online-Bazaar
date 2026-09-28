@@ -29,6 +29,11 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       JWT_SECRET: "test-secret",
       PORT: String(port),
       CLIENT_URL: "http://localhost:3000",
+      // Never reach the real Razorpay API: no keys, and a dead API address,
+      // unless a test passes its own (mock) values.
+      RAZORPAY_KEY_ID: "",
+      RAZORPAY_KEY_SECRET: "",
+      RAZORPAY_API_URL: "http://127.0.0.1:9/v1",
       ...env,
     },
   });
