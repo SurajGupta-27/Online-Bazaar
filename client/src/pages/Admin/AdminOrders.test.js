@@ -57,7 +57,7 @@ test("lists orders with buyer, items, address and total", async () => {
   expect(screen.getByText("Sam (sam@x.com)")).toBeInTheDocument();
   expect(screen.getByText("Pen x3")).toBeInTheDocument();
   expect(screen.getByText("Ship to: 1 Road")).toBeInTheDocument();
-  expect(screen.getByText("$6.00")).toBeInTheDocument();
+  expect(screen.getByText("₹6")).toBeInTheDocument();
 });
 
 test("changing the status saves it", async () => {

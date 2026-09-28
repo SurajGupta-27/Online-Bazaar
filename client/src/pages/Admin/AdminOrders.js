@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AdminMenu from "../../components/Layout/AdminMenu";
+import { formatPrice } from "../../utils/formatPrice";
 import Layout from "../../components/Layout/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -80,7 +81,7 @@ const AdminOrders = () => {
                     {order.items.map((item) => `${item.name} x${item.quantity}`).join(", ")}
                   </p>
                   <p className="mb-1 text-muted">Ship to: {order.shippingAddress}</p>
-                  <strong>${order.total.toFixed(2)}</strong>
+                  <strong>{formatPrice(order.total)}</strong>
                   <small className="text-muted d-block mt-1">
                     {new Date(order.createdAt).toLocaleDateString()}
                   </small>

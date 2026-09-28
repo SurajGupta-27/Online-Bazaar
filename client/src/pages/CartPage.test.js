@@ -51,7 +51,7 @@ const renderCart = () =>
 
 test("quantity choices are limited by stock (max 10) and default to 1", async () => {
   renderCart();
-  expect(await screen.findByText("Total : $12.50")).toBeInTheDocument();
+  expect(await screen.findByText("Total : ₹12.50")).toBeInTheDocument();
   const [penSelect, inkSelect] = screen.getAllByRole("combobox");
   expect(penSelect).toHaveValue("1");
   expect(within(penSelect).getAllByRole("option")).toHaveLength(5);
@@ -63,7 +63,7 @@ test("the chosen quantity updates the total, is saved, and is sent with the orde
   const [penSelect] = await screen.findAllByRole("combobox");
   fireEvent.change(penSelect, { target: { value: "3" } });
 
-  expect(screen.getByText("Total : $32.50")).toBeInTheDocument();
+  expect(screen.getByText("Total : ₹32.50")).toBeInTheDocument();
   expect(screen.getByText(/You Have 4 items/)).toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem("cart"))[0].cartQuantity).toBe(3);
 

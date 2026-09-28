@@ -1,5 +1,6 @@
 import React from "react";
 import Layout from "./../components/Layout/Layout";
+import { formatPrice } from "../utils/formatPrice";
 import { useCart, cartQuantity, maxCartQuantity } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
@@ -18,10 +19,7 @@ const CartPage = () => {
         (sum, item) => sum + Number(item.price || 0) * cartQuantity(item),
         0
       );
-      return total.toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-      });
+      return formatPrice(total);
     } catch (error) {
       console.log(error);
     }
@@ -88,7 +86,7 @@ const CartPage = () => {
                 <div className="col-md-8">
                   <p>{p.name}</p>
                   <p>{p.description.substring(0, 30)}</p>
-                  <p>Price : {p.price}</p>
+                  <p>Price : {formatPrice(p.price)}</p>
                   <div className="d-flex align-items-center gap-2 mb-2">
                     <label htmlFor={`qty-${p._id}`}>Quantity :</label>
                     <select

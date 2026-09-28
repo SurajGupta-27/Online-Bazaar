@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "./../components/Layout/Layout";
+import { formatPrice } from "../utils/formatPrice";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Checkbox, Radio } from "antd";
@@ -167,7 +168,7 @@ const HomePage = () => {
                   <p className="card-text">
                     {p.description.substring(0, 30)}...
                   </p>
-                  <p className="card-text"> $ {p.price}</p>
+                  <p className="card-text">{formatPrice(p.price)}</p>
                   <button
                     className="btn btn-primary ms-1"
                     onClick={() => navigate(`/product/${p.slug}`)}
