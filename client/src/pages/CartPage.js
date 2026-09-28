@@ -6,11 +6,20 @@ import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { errorMessage } from "../utils/errorMessage";
+import { loadRazorpay } from "../utils/loadRazorpay";
+
+const PAYMENT_OPTIONS = [
+  { value: "razorpay", label: "Pay Online (Razorpay)", hint: "UPI, cards, netbanking, wallets" },
+  { value: "cod", label: "Cash on Delivery", hint: "Pay in cash when your order arrives" },
+];
+
 const CartPage = () => {
   const [auth] = useAuth();
   const [cart, setCart, , removeFromCart, updateQuantity] = useCart();
   const navigate = useNavigate();
   const [placingOrder, setPlacingOrder] = React.useState(false);
+  const [paymentMethod, setPaymentMethod] = React.useState("cod");
 
   //total price
   const totalPrice = () => {
@@ -33,23 +42,96 @@ const CartPage = () => {
     }
   };
 
+  const finishOrder = (message) => {
+    setCart([]);
+    localStorage.removeItem("cart");
+    toast.success(message);
+    navigate("/dashboard/user/orders");
+  };
+
+  // Frees the stock the server is holding for an unpaid online order.
+  const cancelPayment = (orderId) =>
+    axios.post(`/api/v1/order/cancel-payment/${orderId}`).catch(() => {});
+
+  // Opens Razorpay Checkout for an order the server has already created and
+  // priced. The cart is only cleared once the server has verified the payment.
+  const payOnline = async (order, payment) => {
+    const Razorpay = await loadRazorpay();
+    if (!Razorpay) {
+      await cancelPayment(order._id);
+      toast.error("Couldn't load the payment window. Check your connection and try again.");
+      setPlacingOrder(false);
+      return;
+    }
+    let settled = false;
+    const checkout = new Razorpay({
+      key: payment.keyId,
+      order_id: payment.razorpayOrderId,
+      amount: payment.amount,
+      currency: payment.currency,
+      name: "Ecommerce App",
+      description: `Order ${order._id.slice(-8).toUpperCase()}`,
+      prefill: {
+        name: auth.user.name,
+        email: auth.user.email,
+        contact: auth.user.phone,
+      },
+      timeout: payment.timeout,
+      handler: async (response) => {
+        settled = true;
+        try {
+          await axios.post("/api/v1/order/verify-payment", {
+            orderId: order._id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          finishOrder("Payment successful. Order placed!");
+        } catch (error) {
+          toast.error(errorMessage(error, "We couldn't confirm your payment"));
+          if (error.response?.status === 409) navigate("/dashboard/user/orders");
+        } finally {
+          setPlacingOrder(false);
+        }
+      },
+      modal: {
+        // Closed without paying (or Checkout timed out): release the order.
+        ondismiss: async () => {
+          if (settled) return;
+          settled = true;
+          await cancelPayment(order._id);
+          toast.error("Payment cancelled. Your cart is unchanged.");
+          setPlacingOrder(false);
+        },
+      },
+    });
+    // Checkout stays open after a failed attempt so the shopper can retry.
+    checkout.on("payment.failed", (response) => {
+      toast.error(response?.error?.description || "Payment failed. Please try again.");
+    });
+    checkout.open();
+  };
+
   const placeOrder = async () => {
+    setPlacingOrder(true);
+    let data;
     try {
-      setPlacingOrder(true);
-      await axios.post("/api/v1/order/create-order", {
+      ({ data } = await axios.post("/api/v1/order/create-order", {
         shippingAddress: auth.user.address,
+        paymentMethod,
         items: cart.map((item) => ({
           product: item._id,
           quantity: cartQuantity(item),
         })),
-      });
-      setCart([]);
-      localStorage.removeItem("cart");
-      toast.success("Order placed successfully");
-      navigate("/dashboard/user/orders");
+      }));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to place order");
-    } finally {
+      toast.error(errorMessage(error, "Unable to place order"));
+      setPlacingOrder(false);
+      return;
+    }
+    if (paymentMethod === "razorpay") {
+      await payOnline(data.order, data.payment);
+    } else {
+      finishOrder("Order placed. Pay in cash when it's delivered.");
       setPlacingOrder(false);
     }
   };
@@ -130,12 +212,38 @@ const CartPage = () => {
                   >
                     Update Address
                   </button>
+                  <fieldset className="text-start mt-3" disabled={placingOrder}>
+                    <legend className="h5">Payment method</legend>
+                    {PAYMENT_OPTIONS.map((option) => (
+                      <div className="form-check mb-2" key={option.value}>
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="paymentMethod"
+                          id={`pay-${option.value}`}
+                          value={option.value}
+                          checked={paymentMethod === option.value}
+                          onChange={() => setPaymentMethod(option.value)}
+                        />
+                        <label className="form-check-label" htmlFor={`pay-${option.value}`}>
+                          {option.label}
+                          <small className="d-block text-muted">{option.hint}</small>
+                        </label>
+                      </div>
+                    ))}
+                  </fieldset>
                   <button
-                    className="btn btn-primary w-100 mt-3"
+                    className="btn btn-primary w-100 mt-2"
                     disabled={placingOrder || !cart.length}
                     onClick={placeOrder}
                   >
-                    {placingOrder ? "Placing order..." : "Place order"}
+                    {placingOrder
+                      ? paymentMethod === "razorpay"
+                        ? "Waiting for payment..."
+                        : "Placing order..."
+                      : paymentMethod === "razorpay"
+                      ? `Pay ${totalPrice()}`
+                      : "Place order"}
                   </button>
                 </div>
               </>
