@@ -47,6 +47,16 @@ const productSchema = new mongoose.Schema(
     shipping: {
       type: Boolean,
     },
+    // Kept in step with the product's reviews by refreshProductRating
+    // (controllers/reviewController.js); the average is rounded to 0.1.
+    ratingAverage: {
+      type: Number,
+      default: 0,
+    },
+    ratingCount: {
+      type: Number,
+      default: 0,
+    },
     // Where an imported product came from, e.g. "dummyjson:12", so imports
     // never create duplicates. Products added by an admin have none.
     externalId: {

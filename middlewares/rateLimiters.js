@@ -25,6 +25,20 @@ export const googleLoginLimiter = rateLimit({
   message: tooManyAttempts,
 });
 
+// Writing or editing reviews: 10 per hour per signed-in user (runs after
+// requireSignIn, so it counts per account rather than per IP).
+export const reviewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  keyGenerator: (req) => `user:${req.user._id}`,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "You're posting reviews too quickly. Please try again later.",
+  },
+});
+
 export const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,

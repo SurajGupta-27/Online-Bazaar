@@ -1,5 +1,6 @@
 import productModel from "../models/productModel.js";
 import categoryModel from "../models/categoryModel.js";
+import reviewModel from "../models/reviewModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { escapeRegex } from "../helpers/escapeRegex.js";
@@ -244,6 +245,7 @@ export const deleteProductController = async (req, res) => {
       return res.status(404).send({ success: false, message: "Product not found" });
     }
     const deleted = await productModel.findByIdAndDelete(req.params.pid).select("-photo");
+    if (deleted) await reviewModel.deleteMany({ product: deleted._id });
     await deleteImages(deleted?.images?.map((image) => image.publicId));
     res.status(200).send({
       success: true,
