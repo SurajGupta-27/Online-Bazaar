@@ -81,6 +81,9 @@ try {
       check(`invoice shows "${expected}"`, text.includes(expected));
     }
     check("email escapes data in HTML", mail.html.includes("Pen &lt;b&gt;Bold&lt;/b&gt; &amp; Co") && !mail.html.includes("<b>Bold</b>"));
+    const orderLink = `http://localhost:3000/dashboard/user/orders/${cod.json.order._id}`;
+    check("confirmation links to the order page", mail.html.includes(`href="${orderLink}"`) && mail.text.includes(`Track your order: ${orderLink}`));
+    check("confirmation shows the expected delivery date", /Delivery:<\/strong> Expected by \w{3}, \d{1,2} \w{3} \d{4}/.test(mail.html) && /Delivery: Expected by /.test(mail.text), mail.text);
 
     // --- Escaping hostile customer data -------------------------------------
     await db.collection("users").updateOne({ email: "ravi@x.com" }, {
@@ -131,12 +134,16 @@ try {
     const [packMail] = await outbox.waitFor(1);
     check("packed -> email", packed.status === 200 && packMail?.subject === `Order #${ref}: Packed - Online Bazaar`, packMail?.subject);
     outbox.clear();
-    const shipped = await status(codId, "shipped");
+    const shipped = await api("PUT", `/api/v1/order/order-status/${codId}`, { status: "shipped", note: "BlueDart & Co, AWB 1234567890" }, { token: admin });
     const [shipMail] = await outbox.waitFor(1);
     check("shipped -> email", shipped.status === 200 && shipMail?.subject === `Order #${ref}: Shipped - Online Bazaar`, shipMail?.subject);
     check("status email shows progress and has a text version",
       /Shipped/.test(shipMail?.html) && /\[x\] Packed/.test(shipMail?.text) && /\[x\] Shipped/.test(shipMail?.text) &&
         /\[ \] Out for delivery/.test(shipMail?.text) && /\[ \] Delivered/.test(shipMail?.text), shipMail?.text);
+    check("status email shows the tracking note, escaped",
+      shipMail?.html.includes("Tracking details:</strong> BlueDart &amp; Co, AWB 1234567890") && shipMail?.text.includes("Tracking details: BlueDart & Co, AWB 1234567890"), shipMail?.text);
+    check("status email shows the expected date and links to the order page",
+      /Expected by /.test(shipMail?.html) && shipMail?.html.includes(`href="${orderLink}"`) && shipMail?.text.includes(`Track your order: ${orderLink}`));
     const same = await status(codId, "shipped");
     await sleep(300);
     check("setting the same status again: no email", same.status === 200 && outbox.read().length === 1);
@@ -146,6 +153,8 @@ try {
     await status(codId, "delivered");
     const afterDelivered = await outbox.waitFor(3);
     check("delivered -> email", afterDelivered[2]?.subject === `Order #${ref}: Delivered - Online Bazaar`, afterDelivered[2]?.subject);
+    check("delivered email: no expected date, no note from earlier steps",
+      !/Expected by|Tracking details/.test(afterDelivered[2]?.text), afterDelivered[2]?.text);
     const history = (await orders.findOne({ _id: new ObjectId(codId) })).statusHistory.map((h) => h.status).join();
     check("history records each change once", history === "placed,packed,shipped,out_for_delivery,delivered", history);
 

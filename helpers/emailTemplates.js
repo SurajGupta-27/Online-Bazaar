@@ -2,7 +2,15 @@
 // reliably) plus a plain-text version. Every value from the database goes
 // through escapeHtml() before it is placed in HTML.
 import { BRAND, formatRupees } from "./brand.js";
-import { ORDER_STATUS, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, TRACKING_STEPS, stepIndex, statusLabel } from "./orderStatus.js";
+import {
+  ORDER_STATUS,
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+  TRACKING_STEPS,
+  estimatedDelivery,
+  stepIndex,
+  statusLabel,
+} from "./orderStatus.js";
 import { shortOrderId } from "./invoice.js";
 
 export const escapeHtml = (value) =>
@@ -19,6 +27,31 @@ const FONT = "font-family:'DM Sans',Segoe UI,Helvetica,Arial,sans-serif;";
 // The store's address for links in emails: the first CLIENT_URL origin.
 export const storeUrl = (path = "") =>
   `${(process.env.CLIENT_URL || "http://localhost:3000").split(",")[0].trim().replace(/\/$/, "")}${path}`;
+
+// The customer's order details page, with the tracking timeline.
+export const orderUrl = (order) => storeUrl(`/dashboard/user/orders/${order._id}`);
+
+// "Fri, 24 Oct 2026", in India time.
+const formatDay = (date) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+      .formatToParts(new Date(date))
+      .map(({ type, value }) => [type, value])
+  );
+  return `${parts.weekday}, ${parts.day} ${parts.month} ${parts.year}`;
+};
+
+// "Expected by Fri, 24 Oct 2026", or "" once delivered or cancelled.
+const expectedLine = (order) => {
+  const date = estimatedDelivery(order);
+  return date ? `Expected by ${formatDay(date)}` : "";
+};
 
 const button = (href, text) =>
   `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:${COLORS.primary};color:#ffffff;text-decoration:none;font-weight:600;${FONT}">${escapeHtml(text)}</a>`;
@@ -78,8 +111,7 @@ const itemsText = (order) =>
 const paymentLine = (order) =>
   `${PAYMENT_METHOD_LABEL[order.paymentMethod] || order.paymentMethod} (${PAYMENT_STATUS_LABEL[order.paymentStatus] || order.paymentStatus})`;
 
-// The order's progress along TRACKING_STEPS (or "Cancelled"). Reusable by the
-// order tracking timeline's emails.
+// The order's progress along TRACKING_STEPS (or "Cancelled") for status emails.
 export const progressHtml = (status) => {
   if (status === "cancelled") {
     return `<p style="margin:16px 0;padding:10px 14px;border-radius:8px;background:#fef2f2;color:${COLORS.danger};font-weight:600;">${escapeHtml(statusLabel("cancelled"))}</p>`;
@@ -104,7 +136,8 @@ export const progressText = (status) =>
 export const orderConfirmationEmail = (order, customer) => {
   const ref = shortOrderId(order);
   const firstName = String(customer?.name || "there").split(" ")[0];
-  const ordersUrl = storeUrl("/dashboard/user/orders");
+  const trackUrl = orderUrl(order);
+  const expected = expectedLine(order);
   const codDue = order.paymentMethod === "cod" && order.paymentStatus !== "paid";
   return {
     subject: `Order #${ref} confirmed - ${BRAND.name}`,
@@ -116,8 +149,9 @@ export const orderConfirmationEmail = (order, customer) => {
 ${itemsTable(order)}
 <p style="margin:0 0 6px;"><strong>Payment:</strong> ${escapeHtml(paymentLine(order))}${codDue ? ` &middot; please keep ${escapeHtml(formatRupees(order.total))} ready on delivery` : ""}</p>
 <p style="margin:0 0 6px;"><strong>Delivering to:</strong> ${escapeHtml(order.shippingAddress)}</p>
+${expected ? `<p style="margin:0 0 6px;"><strong>Delivery:</strong> ${escapeHtml(expected)}</p>` : ""}
 <p style="margin:0 0 20px;"><strong>Invoice:</strong> ${escapeHtml(order.invoiceNumber)} (attached as a PDF)</p>
-<p style="margin:0;">${button(ordersUrl, "View your orders")}</p>`,
+<p style="margin:0;">${button(trackUrl, "Track your order")}</p>`,
     }),
     text: [
       `Thanks for your order, ${firstName}!`,
@@ -127,9 +161,10 @@ ${itemsTable(order)}
       "",
       `Payment: ${paymentLine(order)}${codDue ? ` - please keep ${formatRupees(order.total)} ready on delivery` : ""}`,
       `Delivering to: ${order.shippingAddress}`,
+      ...(expected ? [`Delivery: ${expected}`] : []),
       `Invoice: ${order.invoiceNumber} (attached as a PDF)`,
       "",
-      `View your orders: ${ordersUrl}`,
+      `Track your order: ${trackUrl}`,
       "",
       `${BRAND.name} - ${BRAND.tagline}`,
     ].join("\n"),
@@ -140,8 +175,11 @@ ${itemsTable(order)}
 export const orderStatusEmail = (order, customer, status) => {
   const ref = shortOrderId(order);
   const firstName = String(customer?.name || "there").split(" ")[0];
-  const ordersUrl = storeUrl("/dashboard/user/orders");
+  const trackUrl = orderUrl(order);
   const info = ORDER_STATUS[status] || { label: status, message: "" };
+  // The admin's note on this step, e.g. the courier and tracking number.
+  const note = [...(order.statusHistory || [])].reverse().find((h) => h.status === status)?.note || "";
+  const expected = order.status === status ? expectedLine(order) : "";
   const refund =
     status === "cancelled" && order.paymentMethod === "razorpay" && order.paymentStatus === "paid"
       ? "Your online payment will be refunded to the original payment method."
@@ -154,22 +192,26 @@ export const orderStatusEmail = (order, customer, status) => {
       body: `
 <p style="margin:0 0 12px;">Hi ${escapeHtml(firstName)}, ${escapeHtml(info.message)}</p>
 ${progressHtml(status)}
+${note ? `<p style="margin:0 0 12px;padding:10px 14px;border-radius:8px;background:${COLORS.bg};"><strong>${status === "cancelled" ? "Reason" : "Tracking details"}:</strong> ${escapeHtml(note)}</p>` : ""}
+${expected ? `<p style="margin:0 0 12px;"><strong>${escapeHtml(expected)}</strong></p>` : ""}
 ${refund ? `<p style="margin:0 0 12px;">${escapeHtml(refund)}</p>` : ""}
 ${itemsTable(order)}
 <p style="margin:0 0 20px;"><strong>Delivering to:</strong> ${escapeHtml(order.shippingAddress)}</p>
-<p style="margin:0;">${button(ordersUrl, "View your orders")}</p>`,
+<p style="margin:0;">${button(trackUrl, "Track your order")}</p>`,
     }),
     text: [
       `Hi ${firstName}, ${info.message}`,
       "",
       `Order #${ref}: ${info.label}`,
       progressText(status),
+      ...(note ? [`${status === "cancelled" ? "Reason" : "Tracking details"}: ${note}`] : []),
+      ...(expected ? [expected] : []),
       ...(refund ? ["", refund] : []),
       "",
       itemsText(order),
       `Delivering to: ${order.shippingAddress}`,
       "",
-      `View your orders: ${ordersUrl}`,
+      `Track your order: ${trackUrl}`,
     ].join("\n"),
   };
 };
