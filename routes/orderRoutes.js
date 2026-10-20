@@ -3,6 +3,7 @@ import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 import {
   cancelPaymentController,
   createOrderController,
+  downloadInvoiceController,
   getAllOrdersController,
   getMyOrdersController,
   markOrderPaidController,
@@ -16,6 +17,8 @@ router.post("/create-order", requireSignIn, createOrderController);
 router.post("/verify-payment", requireSignIn, verifyPaymentController);
 router.post("/cancel-payment/:id", requireSignIn, cancelPaymentController);
 router.get("/my-orders", requireSignIn, getMyOrdersController);
+// own orders, or any order for an admin
+router.get("/invoice/:id", requireSignIn, downloadInvoiceController);
 
 // admin
 router.get("/all-orders", requireSignIn, isAdmin, getAllOrdersController);

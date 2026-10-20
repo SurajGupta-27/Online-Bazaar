@@ -59,6 +59,11 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       // and pass googleEnv(mock).
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CERTS_URL: "http://127.0.0.1:9/oauth2/v1/certs",
+      // And email: no Gmail credentials. Tests that check emails pass
+      // emailEnv(outbox) from tests/outbox.mjs, which writes them to a file.
+      EMAIL_USER: "",
+      EMAIL_APP_PASSWORD: "",
+      EMAIL_OUTBOX: "",
       ...env,
     },
   });

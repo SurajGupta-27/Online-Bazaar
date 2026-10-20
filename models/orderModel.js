@@ -41,6 +41,15 @@ const orderSchema = new mongoose.Schema(
     stockReleased: { type: Boolean, default: false },
     // A payment that arrived after the order was cancelled; refund it in Razorpay.
     refundRequired: { type: Boolean, default: false },
+    // Every status the order has had, oldest first (helpers/orderStatus.js).
+    statusHistory: {
+      type: [{ _id: false, status: String, at: Date }],
+      default: [],
+    },
+    // Issued once the order is confirmed (COD placed, or paid online):
+    // "INV-2026-000001", numbered per calendar year.
+    invoiceNumber: { type: String, unique: true, sparse: true },
+    invoicedAt: Date,
   },
   { timestamps: true }
 );

@@ -9,6 +9,14 @@ import {
   razorpayKeyId,
   toPaise,
 } from "../helpers/razorpay.js";
+import { historyEntry } from "../helpers/orderStatus.js";
+import { notifyOrderConfirmed, notifyOrderStatus } from "../helpers/orderNotifications.js";
+import {
+  buildInvoicePdf,
+  ensureInvoiceNumber,
+  invoiceAvailable,
+  invoiceFilename,
+} from "../helpers/invoice.js";
 
 const PAYMENT_METHODS = ["cod", "razorpay"];
 
@@ -38,7 +46,12 @@ const releaseOrder = async (filter, update) => {
   return order;
 };
 
-const cancelUnpaid = { status: "cancelled", paymentStatus: "failed" };
+// An unpaid online order that will never be paid (closed, expired, failed to start).
+const cancelUnpaid = () => ({
+  status: "cancelled",
+  paymentStatus: "failed",
+  $push: { statusHistory: historyEntry("cancelled") },
+});
 const unpaidOnline = { paymentMethod: "razorpay", paymentStatus: "pending" };
 
 // Releases online orders whose payment window has passed. Run on a timer by server.js.
@@ -49,7 +62,7 @@ export const releaseExpiredPayments = async () => {
   for (const { _id } of expired) {
     await releaseOrder(
       { _id, ...unpaidOnline, holdExpiresAt: { $lte: new Date() } },
-      cancelUnpaid
+      cancelUnpaid()
     );
   }
   return expired.length;
@@ -151,6 +164,7 @@ export const createOrderController = async (req, res) => {
         shippingAddress,
         paymentMethod,
         paymentStatus: "pending",
+        statusHistory: [historyEntry("placed")],
         ...(paymentMethod === "razorpay" && {
           holdExpiresAt: new Date(Date.now() + holdSeconds() * 1000),
         }),
@@ -161,6 +175,7 @@ export const createOrderController = async (req, res) => {
     }
 
     if (paymentMethod === "cod") {
+      notifyOrderConfirmed(order._id);
       return res.status(201).send({ success: true, message: "Order placed", order });
     }
 
@@ -173,7 +188,7 @@ export const createOrderController = async (req, res) => {
       });
     } catch (error) {
       console.log(error);
-      await releaseOrder({ _id: order._id, ...unpaidOnline }, cancelUnpaid);
+      await releaseOrder({ _id: order._id, ...unpaidOnline }, cancelUnpaid());
       return res.status(502).send({
         success: false,
         message: "Unable to start online payment. Please try again or choose Cash on Delivery.",
@@ -234,6 +249,8 @@ export const verifyPaymentController = async (req, res) => {
       { new: true }
     );
     if (updated) {
+      // Only the request that actually marked it paid sends the confirmation.
+      notifyOrderConfirmed(updated._id);
       return res.status(200).send({ success: true, message: "Payment successful", order: updated });
     }
 
@@ -267,7 +284,7 @@ export const cancelPaymentController = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(404).send({ success: false, message: "Order not found" });
     }
-    await releaseOrder({ _id: id, user: req.user._id, ...unpaidOnline }, cancelUnpaid);
+    await releaseOrder({ _id: id, user: req.user._id, ...unpaidOnline }, cancelUnpaid());
     const order = await orderModel.findOne({ _id: id, user: req.user._id });
     if (!order) {
       return res.status(404).send({ success: false, message: "Order not found" });
@@ -330,8 +347,15 @@ export const updateOrderStatusController = async (req, res) => {
       return res.status(404).send({ success: false, message: "Order not found" });
     }
 
+    // Nothing changes, so nothing is recorded and no email goes out.
+    if (existing.status === status) {
+      const order = await orderModel.findById(id).populate("user", "name email");
+      return res.status(200).send({ success: true, message: "Order status unchanged", order });
+    }
+    const changed = { status, $push: { statusHistory: historyEntry(status) } };
+
     if (status === "cancelled") {
-      await releaseOrder({ _id: id, status: { $ne: "cancelled" } }, { status });
+      const cancelled = await releaseOrder({ _id: id, status: { $ne: "cancelled" } }, changed);
       // An online order cancelled before payment will never be paid; one
       // cancelled after payment needs its money back.
       await orderModel.updateOne({ _id: id, ...unpaidOnline }, { paymentStatus: "failed" });
@@ -339,6 +363,7 @@ export const updateOrderStatusController = async (req, res) => {
         { _id: id, paymentMethod: "razorpay", paymentStatus: "paid" },
         { refundRequired: true }
       );
+      if (cancelled) notifyOrderStatus(id, status);
     } else {
       if (existing.status === "cancelled") {
         return res.status(409).send({
@@ -354,7 +379,7 @@ export const updateOrderStatusController = async (req, res) => {
       }
       const updated = await orderModel.findOneAndUpdate(
         { _id: id, status: { $ne: "cancelled" } },
-        { status }
+        changed
       );
       if (!updated) {
         return res.status(409).send({
@@ -362,6 +387,7 @@ export const updateOrderStatusController = async (req, res) => {
           message: "Cancelled orders can't be reopened",
         });
       }
+      notifyOrderStatus(id, status);
     }
 
     const order = await orderModel.findById(id).populate("user", "name email");
@@ -407,5 +433,39 @@ export const markOrderPaidController = async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(500).send({ success: false, message: "Unable to mark order as paid" });
+  }
+};
+
+// The invoice PDF for an order: the customer's own orders, or any order for
+// an admin. Someone else's order looks the same as a missing one.
+export const downloadInvoiceController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = mongoose.isValidObjectId(id)
+      ? await orderModel.findById(id).populate("user", "name email phone")
+      : null;
+    const own = order && String(order.user?._id) === String(req.user._id);
+    const admin = order && !own && (await userModel.exists({ _id: req.user._id, role: 1 }));
+    if (!own && !admin) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    if (!invoiceAvailable(order)) {
+      return res.status(409).send({
+        success: false,
+        message: "The invoice is available once the order is paid",
+      });
+    }
+    // Orders confirmed before invoices existed get their number now.
+    const invoiced = await ensureInvoiceNumber(order);
+    const pdf = await buildInvoicePdf(invoiced, order.user);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${invoiceFilename(invoiced)}"`,
+      "Cache-Control": "private, no-store",
+    });
+    return res.status(200).send(pdf);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ success: false, message: "Unable to create the invoice" });
   }
 };
