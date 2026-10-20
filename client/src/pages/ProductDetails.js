@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout/Layout";
 import { formatPrice } from "../utils/formatPrice";
 import axios from "axios";
@@ -6,44 +6,46 @@ import { useParams, Link } from "react-router-dom";
 import { useCart } from "../context/cart";
 import toast from "react-hot-toast";
 import ProductCard from "../components/Product/ProductCard";
+import Reviews from "../components/Product/Reviews";
+import { RatingSummary } from "../components/Product/StarRating";
 import { productImages } from "../utils/productImage";
 const ProductDetails = () => {
-  const params = useParams();
+  const { slug } = useParams();
   const [, , addToCart] = useCart();
   const [product, setProduct] = useState({});
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [activeImage, setActiveImage] = useState(0);
 
-  //initalp details
+  // The product, then products from the same category.
   useEffect(() => {
-    if (params?.slug) getProduct();
-  }, [params?.slug]);
-  //getProduct
-  const getProduct = async () => {
-    try {
-      const { data } = await axios.get(
-        `/api/v1/product/get-product/${params.slug}`
-      );
-      setProduct(data?.product || {});
-      setActiveImage(0);
-      if (data?.product?.category?._id) {
-        getSimilarProduct(data.product._id, data.product.category._id);
+    if (!slug) return;
+    const load = async () => {
+      try {
+        const { data } = await axios.get(`/api/v1/product/get-product/${slug}`);
+        setProduct(data?.product || {});
+        setActiveImage(0);
+        const { _id: pid, category } = data?.product || {};
+        if (category?._id) {
+          const related = await axios.get(`/api/v1/product/related-product/${pid}/${category._id}`);
+          setRelatedProducts(related.data?.products || []);
+        }
+      } catch (error) {
+        console.log(error);
       }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  //get similar product
-  const getSimilarProduct = async (pid, cid) => {
-    try {
-      const { data } = await axios.get(
-        `/api/v1/product/related-product/${pid}/${cid}`
-      );
-      setRelatedProducts(data?.products || []);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+    };
+    load();
+  }, [slug]);
+
+  // Keeps the header's rating in step after a review is added or changed.
+  const updateRating = useCallback(
+    (summary) =>
+      setProduct((current) => ({
+        ...current,
+        ratingAverage: summary.average,
+        ratingCount: summary.count,
+      })),
+    []
+  );
   const inStock = Number(product.quantity) > 0;
   const images = productImages(product, 900);
   const thumbnails = productImages(product, 160);
@@ -90,6 +92,9 @@ const ProductDetails = () => {
                 </Link>
               )}
               <h1>{product.name}</h1>
+              <a href="#reviews" className="rating-link">
+                <RatingSummary average={product.ratingAverage} count={product.ratingCount} />
+              </a>
               <span className="price">{formatPrice(product.price)}</span>
               <p>{product.description}</p>
               <dl>
@@ -115,6 +120,7 @@ const ProductDetails = () => {
             </div>
           </div>
         )}
+        {product._id && <Reviews productId={product._id} onSummary={updateRating} />}
         <section className="mt-4">
           <div className="section-header">
             <h2 className="section-heading">Similar products</h2>

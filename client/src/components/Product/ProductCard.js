@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useCart } from "../../context/cart";
 import { formatPrice } from "../../utils/formatPrice";
 import { productImage } from "../../utils/productImage";
+import { RatingSummary } from "./StarRating";
 
 // The product tile used by every product listing (home, category, search,
 // similar products), so they all look and behave the same.
@@ -26,6 +27,8 @@ const ProductCard = ({ product }) => {
           <span className="product-card-category">{product.category.name}</span>
         )}
         <h5 className="product-card-title">{product.name}</h5>
+        <RatingSummary average={product.ratingAverage} count={product.ratingCount} />
+
         <p className="product-card-text">
           {product.description?.length > 60
             ? `${product.description.substring(0, 60)}...`
