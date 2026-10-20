@@ -10,7 +10,8 @@ import {
 } from "./../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
 
-// Only these fields are ever sent to (and stored by) the browser.
+// Only these fields are ever sent to (and stored by) the browser. The flags say
+// how the account can sign in, never the secrets themselves.
 const publicUser = (user) => ({
   _id: user._id,
   name: user.name,
@@ -18,7 +19,28 @@ const publicUser = (user) => ({
   phone: user.phone,
   address: user.address,
   role: user.role,
+  hasPassword: Boolean(user.password),
+  googleLinked: Boolean(user.googleId),
 });
+
+// Upgrades legacy data in place: plain-text security answers and
+// un-normalized emails. Returns true when the user needs saving. Accounts
+// without an answer (Google sign-in) are left without one.
+const upgradeLegacyFields = async (user) => {
+  let upgraded = false;
+  if (user.answer && !isBcryptHash(user.answer)) {
+    user.answer = await hashPassword(normalizeAnswer(user.answer));
+    upgraded = true;
+  }
+  if (user.email !== normalizeEmail(user.email)) {
+    user.email = normalizeEmail(user.email);
+    upgraded = true;
+  }
+  return upgraded;
+};
+
+const signToken = (user) =>
+  JWT.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
 export const registerController = async (req, res) => {
   try {
@@ -99,7 +121,8 @@ export const loginController = async (req, res) => {
 
     const user = await findUserByEmail(userModel, email);
 
-    // Same status, message and timing whether or not the email exists.
+    // Same status, message and timing whether or not the email exists, and
+    // for accounts that only sign in with Google (no password).
     const match = await comparePassword(password, user?.password || DUMMY_HASH);
     if (!user || !match) {
       return res.status(401).send({
@@ -108,21 +131,8 @@ export const loginController = async (req, res) => {
       });
     }
 
-    // Upgrade legacy data: plain-text security answers and un-normalized emails.
-    let upgraded = false;
-    if (!isBcryptHash(user.answer)) {
-      user.answer = await hashPassword(normalizeAnswer(user.answer));
-      upgraded = true;
-    }
-    if (user.email !== normalizeEmail(user.email)) {
-      user.email = normalizeEmail(user.email);
-      upgraded = true;
-    }
-    if (upgraded) await user.save();
-
-    const token = JWT.sign({ _id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    if (await upgradeLegacyFields(user)) await user.save();
+    const token = signToken(user);
 
     res.status(200).send({
       success: true,
@@ -161,8 +171,9 @@ export const forgotPasswordController = async (req, res) => {
     const user = await findUserByEmail(userModel, email);
 
     // Accounts created before answers were hashed still hold plain text;
-    // those are compared directly and upgraded to a hash below.
-    const legacyAnswer = user && !isBcryptHash(user.answer);
+    // those are compared directly and upgraded to a hash below. Accounts with
+    // no answer at all (Google sign-in) can never match.
+    const legacyAnswer = Boolean(user?.answer) && !isBcryptHash(user.answer);
     const answerMatches = legacyAnswer
       ? normalizeAnswer(user.answer) === normalizedAnswer
       : await comparePassword(normalizedAnswer, user?.answer || DUMMY_HASH);
@@ -219,22 +230,19 @@ export const updateProfileController = async (req, res) => {
       });
     }
 
-    const hashedPassword = password ? await hashPassword(password) : user.password;
-    const updatedUser = await userModel.findByIdAndUpdate(
-      req.user._id,
-      {
-        name: name?.trim() || user.name,
-        password: hashedPassword,
-        phone: phone?.trim() || user.phone,
-        address: address?.trim() || user.address,
-      },
-      { new: true, runValidators: true }
-    );
+    // Blank fields keep their current value. A Google-only account can set a
+    // password here, after which it can also log in with email and password.
+    // Saved through the document so the model's validators see the whole user.
+    if (name?.trim()) user.name = name.trim();
+    if (phone?.trim()) user.phone = phone.trim();
+    if (address?.trim()) user.address = address.trim();
+    if (password) user.password = await hashPassword(password);
+    await user.save();
 
     res.status(200).send({
       success: true,
       message: "Profile Updated Successfully",
-      updatedUser: publicUser(updatedUser),
+      updatedUser: publicUser(user),
     });
   } catch (error) {
     console.log(error);
@@ -250,7 +258,8 @@ export const getAllUsersController = async (req, res) => {
   try {
     const users = await userModel
       .find({})
-      .select("-password -answer")
+      // The password hash is loaded only so publicUser can report hasPassword.
+      .select("-answer")
       .sort({ createdAt: -1 });
     res.status(200).send({
       success: true,
