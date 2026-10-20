@@ -64,6 +64,13 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       EMAIL_USER: "",
       EMAIL_APP_PASSWORD: "",
       EMAIL_OUTBOX: "",
+      // And the AI: the shopping assistant uses smart search only. Tests of
+      // the AI start tests/mockAi.mjs and pass aiEnv(mock, provider).
+      AI_PROVIDER: "",
+      GEMINI_API_KEY: "",
+      GEMINI_API_URL: "http://127.0.0.1:9/v1beta",
+      GROQ_API_KEY: "",
+      GROQ_API_URL: "http://127.0.0.1:9/openai/v1",
       ...env,
     },
   });
