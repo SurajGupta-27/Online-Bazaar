@@ -52,6 +52,19 @@ test("each order shows its payment method, status and total in rupees", async ()
   expect(screen.getAllByText("₹19,599")).toHaveLength(4);
 });
 
+test("each order links to its tracking page and shows when it arrives", async () => {
+  renderOrders([
+    order("a1", { status: "shipped", estimatedDelivery: "2026-10-24T10:00:00Z" }),
+    order("b2", { status: "cancelled" }),
+  ]);
+  expect(await screen.findByRole("link", { name: "Track order 000000A1" })).toHaveAttribute(
+    "href", "/dashboard/user/orders/0000000000000000000000a1"
+  );
+  expect(screen.getByText(/^Arriving by .*24 Oct/)).toBeInTheDocument();
+  expect(screen.getByText("Shipped")).toBeInTheDocument();
+  expect(screen.getByText("Cancelled")).toBeInTheDocument();
+});
+
 const renderOrders = (orders) => {
   axios.get.mockImplementation((url) =>
     url === "/api/v1/order/my-orders"

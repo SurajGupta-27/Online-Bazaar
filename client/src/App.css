@@ -1178,3 +1178,149 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ============ order tracking ============ */
+.order-status-badge {
+  background: var(--ob-primary-soft);
+  color: var(--ob-primary);
+  font-weight: 600;
+}
+
+.order-status-badge.is-cancelled {
+  background: #fef2f2;
+  color: var(--ob-danger);
+}
+
+.order-delivery-line {
+  color: var(--ob-success);
+  font-weight: 600;
+}
+
+.order-cancelled-line {
+  color: var(--ob-danger);
+  font-weight: 600;
+}
+
+.order-timeline {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.order-timeline-step {
+  position: relative;
+  display: flex;
+  gap: 0.875rem;
+  padding-bottom: 1.25rem;
+}
+
+.order-timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+/* The line joining each step to the next; solid once that next step is reached. */
+.order-timeline-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 0.6875rem;
+  top: 1.5rem;
+  bottom: 0;
+  width: 2px;
+  background: var(--ob-border);
+}
+
+.order-timeline-step.is-done:not(:last-child)::before {
+  background: var(--ob-success);
+}
+
+.order-timeline-marker {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--ob-border);
+  background: var(--ob-surface);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.is-done .order-timeline-marker,
+.is-current .order-timeline-marker {
+  border-color: var(--ob-success);
+  background: var(--ob-success);
+}
+
+.is-current .order-timeline-marker {
+  box-shadow: 0 0 0 4px #dcfce7;
+}
+
+.is-cancelled .order-timeline-marker {
+  border-color: var(--ob-danger);
+  background: var(--ob-danger);
+  box-shadow: 0 0 0 4px #fee2e2;
+}
+
+.order-timeline-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.order-timeline-label {
+  font-weight: 600;
+}
+
+.is-upcoming .order-timeline-label {
+  color: var(--ob-muted);
+  font-weight: 500;
+}
+
+.is-current .order-timeline-label {
+  color: var(--ob-success);
+  font-weight: 700;
+}
+
+.is-cancelled .order-timeline-label {
+  color: var(--ob-danger);
+  font-weight: 700;
+}
+
+.order-timeline-time {
+  color: var(--ob-muted);
+  font-size: 0.8125rem;
+}
+
+.order-timeline-note {
+  margin: 0.375rem 0 0;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
+  background: var(--ob-bg);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.order-item-image {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 0.5rem;
+  background: var(--ob-bg);
+  object-fit: contain;
+}
+
+.admin-tracking {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--ob-border);
+  max-width: 32rem;
+}
