@@ -49,6 +49,12 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Price-drop and back-in-stock emails (helpers/productAlerts.js). Older
+    // accounts have no value, which counts as on (alertsOn below).
+    alertPrefs: {
+      priceDrop: { type: Boolean, default: true },
+      backInStock: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,

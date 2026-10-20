@@ -10,6 +10,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import alertRoutes from "./routes/alertRoutes.js";
 import { releaseExpiredPayments } from "./controllers/orderController.js";
 import cors from "cors";
 import helmet from "helmet";
@@ -58,6 +59,7 @@ app.use("/api/v1/order", orderRoutes);
 app.use("/api/v1/review", reviewRoutes);
 app.use("/api/v1/wishlist", wishlistRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/alerts", alertRoutes);
 
 //rest api
 app.get("/", (req, res) => {

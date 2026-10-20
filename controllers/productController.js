@@ -2,6 +2,7 @@ import productModel from "../models/productModel.js";
 import categoryModel from "../models/categoryModel.js";
 import reviewModel from "../models/reviewModel.js";
 import wishlistModel from "../models/wishlistModel.js";
+import restockRequestModel from "../models/restockRequestModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { escapeRegex } from "../helpers/escapeRegex.js";
@@ -250,6 +251,7 @@ export const deleteProductController = async (req, res) => {
       await Promise.all([
         reviewModel.deleteMany({ product: deleted._id }),
         wishlistModel.deleteMany({ product: deleted._id }),
+        restockRequestModel.deleteMany({ product: deleted._id }),
       ]);
     }
     await deleteImages(deleted?.images?.map((image) => image.publicId));

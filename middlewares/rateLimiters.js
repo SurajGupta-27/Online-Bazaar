@@ -39,6 +39,16 @@ export const reviewLimiter = rateLimit({
   },
 });
 
+// Unsubscribe links work without logging in; their tokens can't be guessed,
+// but there's no reason to let anyone try thousands.
+export const unsubscribeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: tooManyAttempts,
+});
+
 export const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,

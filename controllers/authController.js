@@ -14,6 +14,7 @@ import {
   verifyGoogleCredential,
 } from "../helpers/google.js";
 import JWT from "jsonwebtoken";
+import { alertPreferences } from "../helpers/alertTokens.js";
 
 // Only these fields are ever sent to (and stored by) the browser. The flags say
 // how the account can sign in, never the secrets themselves.
@@ -26,6 +27,7 @@ const publicUser = (user) => ({
   role: user.role,
   hasPassword: Boolean(user.password),
   googleLinked: Boolean(user.googleId),
+  alerts: alertPreferences(user),
 });
 
 // Upgrades legacy data in place: plain-text security answers and
