@@ -5,6 +5,9 @@ import Layout from "../../components/Layout/Layout";
 import UserMenu from "../../components/Layout/UserMenu";
 import { RatingSummary } from "../../components/Product/StarRating";
 import { useWishlist } from "../../context/wishlist";
+import { useAuth } from "../../context/auth";
+import { alertSettings } from "../../context/alerts";
+import AlertsOn from "../../components/Product/AlertsOn";
 import { useCart } from "../../context/cart";
 import { formatPrice } from "../../utils/formatPrice";
 import { productImage } from "../../utils/productImage";
@@ -12,6 +15,15 @@ import { productImage } from "../../utils/productImage";
 const Wishlist = () => {
   const [wishlist, , removeFromWishlist] = useWishlist();
   const [, , addToCart] = useCart();
+  const [auth] = useAuth();
+  // Wishlist items get price-drop and back-in-stock emails, unless turned off.
+  const settings = alertSettings(auth?.user);
+  const alertsTitle = [
+    settings.priceDrop && "if the price drops",
+    settings.backInStock && "when it's back in stock",
+  ]
+    .filter(Boolean)
+    .join(" or ");
 
   const moveToCart = async (product) => {
     const added = addToCart(product);
@@ -86,6 +98,7 @@ const Wishlist = () => {
                           <span className={inStock ? "text-success" : "text-danger"}>
                             {inStock ? "In stock" : "Out of stock"}
                           </span>
+                          {alertsTitle && <AlertsOn title={`We'll email you ${alertsTitle}`} />}
                         </div>
                         <div className="wishlist-actions">
                           <button

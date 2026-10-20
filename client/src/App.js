@@ -28,6 +28,7 @@ import ProductDetails from "./pages/ProductDetails";
 import Categories from "./pages/Categories";
 import CategoryProduct from "./pages/CategoryProduct";
 import CartPage from "./pages/CartPage";
+import Unsubscribe from "./pages/Unsubscribe";
 function App() {
   return (
     <>
@@ -62,6 +63,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/policy" element={<Policy />} />
+        <Route path="/unsubscribe" element={<Unsubscribe />} />
         <Route path="*" element={<Pagenotfound />} />
       </Routes>
     </>

@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { errorMessage } from "../../utils/errorMessage";
+import AlertSettings from "../../components/Form/AlertSettings";
 import "../../styles/AuthStyles.css";
 const Profile = () => {
   //context
@@ -154,6 +155,7 @@ const Profile = () => {
                   UPDATE
                 </button>
               </form>
+              <AlertSettings />
             </div>
           </div>
         </div>

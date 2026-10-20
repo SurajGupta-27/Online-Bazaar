@@ -1324,3 +1324,64 @@
   border-top: 1px solid var(--ob-border);
   max-width: 32rem;
 }
+
+/* Price-drop and back-in-stock alerts */
+.alerts-on {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ob-primary-soft);
+  color: var(--ob-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.product-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.notify-me-on {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 3rem;
+}
+
+.notify-me-on .alerts-on {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.8rem;
+}
+
+.notify-me-hint {
+  margin: 0.4rem 0 0;
+  color: var(--ob-muted);
+  font-size: 0.85rem;
+}
+
+.alert-settings {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 1.5rem;
+  padding: 2rem;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-radius);
+  background-color: var(--ob-surface);
+  box-shadow: var(--ob-shadow-hover);
+}
+
+.alert-settings .title {
+  margin-bottom: 1.25rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.unsubscribe-page {
+  max-width: 560px;
+  margin-inline: auto;
+}

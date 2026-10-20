@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import ProductCard from "../components/Product/ProductCard";
 import Reviews from "../components/Product/Reviews";
 import WishlistButton from "../components/Product/WishlistButton";
+import NotifyMeButton from "../components/Product/NotifyMeButton";
 import { RatingSummary } from "../components/Product/StarRating";
 import { productImages } from "../utils/productImage";
 const ProductDetails = () => {
@@ -106,19 +107,24 @@ const ProductDetails = () => {
                 <dt>Delivery</dt>
                 <dd>{product.shipping ? "Ships to your address" : "Store pickup only"}</dd>
               </dl>
-              <button
-                className="btn btn-secondary btn-lg px-4"
-                disabled={!inStock}
-                onClick={() => {
-                  const added = addToCart(product);
-                  toast[added ? "success" : "error"](
-                    added ? "Item added to cart" : "Item is already in cart"
-                  );
-                }}
-              >
-                Add to Cart
-              </button>
-              <WishlistButton product={product} withLabel className="ms-2" />
+              <div className="product-detail-actions">
+                {inStock ? (
+                  <button
+                    className="btn btn-secondary btn-lg px-4"
+                    onClick={() => {
+                      const added = addToCart(product);
+                      toast[added ? "success" : "error"](
+                        added ? "Item added to cart" : "Item is already in cart"
+                      );
+                    }}
+                  >
+                    Add to Cart
+                  </button>
+                ) : (
+                  <NotifyMeButton product={product} />
+                )}
+                <WishlistButton product={product} withLabel />
+              </div>
             </div>
           </div>
         )}

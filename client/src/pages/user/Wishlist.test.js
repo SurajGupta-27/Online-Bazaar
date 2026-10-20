@@ -21,8 +21,8 @@ const item = (id, name, price, quantity, priceWhenAdded = price) => ({
   addedAt: "2026-10-01T10:00:00Z",
 });
 
-const renderPage = (items) => {
-  localStorage.setItem("auth", JSON.stringify({ user: { _id: "u1", name: "Gia", role: 0 }, token: fakeToken() }));
+const renderPage = (items, user = { _id: "u1", name: "Gia", role: 0 }) => {
+  localStorage.setItem("auth", JSON.stringify({ user, token: fakeToken() }));
   axios.get.mockImplementation((url) =>
     url === "/api/v1/wishlist"
       ? Promise.resolve({ data: { success: true, items } })
@@ -92,4 +92,22 @@ test("an empty wishlist links back to the shop", async () => {
   renderPage([]);
   expect(await screen.findByText("Your wishlist is empty")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Browse products" })).toHaveAttribute("href", "/");
+});
+
+test("each item shows that alerts are on, with what they cover", async () => {
+  renderPage([item("pen", "Pen", 99, 3), item("ink", "Ink", 40, 0)], {
+    _id: "u1", name: "Gia", role: 0, alerts: { priceDrop: true, backInStock: false },
+  });
+  const pen = (await screen.findByRole("link", { name: "Pen" })).closest("li");
+  expect(within(pen).getByText("Alerts on")).toHaveAttribute("title", "We'll email you if the price drops");
+  const ink = screen.getByRole("link", { name: "Ink" }).closest("li");
+  expect(within(ink).getByText("Alerts on")).toBeInTheDocument();
+});
+
+test("no alerts indicator when both kinds of alert are turned off", async () => {
+  renderPage([item("pen", "Pen", 99, 3)], {
+    _id: "u1", name: "Gia", role: 0, alerts: { priceDrop: false, backInStock: false },
+  });
+  await screen.findByRole("link", { name: "Pen" });
+  expect(screen.queryByText("Alerts on")).toBeNull();
 });

@@ -9,6 +9,7 @@ import { AuthProvider } from "./context/auth";
 import { SearchProvider } from "./context/search";
 import {CartProvider} from "./context/cart"
 import { WishlistProvider } from "./context/wishlist";
+import { AlertsProvider } from "./context/alerts";
 import "antd/dist/reset.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
@@ -17,9 +18,11 @@ root.render(
     <SearchProvider>
       <CartProvider>
         <WishlistProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <AlertsProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AlertsProvider>
         </WishlistProvider>
       </CartProvider>
     </SearchProvider>

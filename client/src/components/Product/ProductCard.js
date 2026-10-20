@@ -6,12 +6,15 @@ import { formatPrice } from "../../utils/formatPrice";
 import { productImage } from "../../utils/productImage";
 import { RatingSummary } from "./StarRating";
 import WishlistButton from "./WishlistButton";
+import AlertsOn from "./AlertsOn";
+import { awaitingRestock, useAlerts } from "../../context/alerts";
 
 // The product tile used by every product listing (home, category, search,
 // similar products), so they all look and behave the same.
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const [, , addToCart] = useCart();
+  const [restock] = useAlerts();
   const open = () => navigate(`/product/${product.slug}`);
   const outOfStock = Number(product.quantity) === 0;
   return (
@@ -40,6 +43,9 @@ const ProductCard = ({ product }) => {
           <span className="price">{formatPrice(product.price)}</span>
           {outOfStock && <span className="stock-badge">Out of stock</span>}
         </div>
+        {outOfStock && awaitingRestock(restock, product._id) && (
+          <AlertsOn title="We'll email you when it's back in stock" className="mb-2" />
+        )}
         <div className="product-card-actions">
           <button className="btn btn-outline-primary btn-sm" onClick={open}>
             More Details
