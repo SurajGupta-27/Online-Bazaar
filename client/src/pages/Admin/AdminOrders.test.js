@@ -41,15 +41,14 @@ const renderPage = (status = "placed", extra) => {
   );
 };
 
-// Opens the antd status Select and picks an option.
-const chooseStatus = async (label) => {
-  fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Status of order ABCDEF12" }));
-  fireEvent.click(await screen.findByTitle(label));
-};
-
 beforeEach(() => {
   axios.put.mockImplementation((url, body) =>
-    Promise.resolve({ data: { success: true, order: order(body.status) } })
+    Promise.resolve({
+      data: {
+        success: true,
+        order: order(body.status, { statusHistory: [{ status: body.status, at: "2026-09-02T10:00:00Z", note: body.note }] }),
+      },
+    })
   );
 });
 afterEach(() => jest.restoreAllMocks());
@@ -63,29 +62,83 @@ test("lists orders with buyer, items, address and total", async () => {
   expect(screen.getByText("₹6")).toBeInTheDocument();
 });
 
-test("changing the status saves it", async () => {
-  renderPage();
-  await chooseStatus("Shipped");
+test("offers only the next step, and saves it", async () => {
+  renderPage("packed");
+  fireEvent.click(await screen.findByRole("button", { name: "Mark as Shipped" }));
   await waitFor(() =>
     expect(axios.put).toHaveBeenCalledWith(
       "/api/v1/order/order-status/0000000000000000abcdef12",
       { status: "shipped" }
     )
   );
+  expect(await screen.findByRole("button", { name: "Mark as Out for delivery" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Mark as Delivered" })).not.toBeInTheDocument();
+});
+
+test("sends the tracking note with the step and clears it", async () => {
+  renderPage("packed");
+  const note = await screen.findByLabelText("Tracking note for order ABCDEF12 (optional)");
+  fireEvent.change(note, { target: { value: "  BlueDart, AWB 123 " } });
+  fireEvent.click(screen.getByRole("button", { name: "Mark as Shipped" }));
+  await waitFor(() =>
+    expect(axios.put).toHaveBeenCalledWith(
+      "/api/v1/order/order-status/0000000000000000abcdef12",
+      { status: "shipped", note: "BlueDart, AWB 123" }
+    )
+  );
+  await waitFor(() => expect(screen.getByLabelText("Tracking note for order ABCDEF12 (optional)")).toHaveValue(""));
+  expect(screen.getAllByText("BlueDart, AWB 123").length).toBeGreaterThan(0);
+});
+
+test("a note can be added to the current step", async () => {
+  renderPage("shipped");
+  const add = await screen.findByRole("button", { name: 'Add note to "Shipped"' });
+  expect(add).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Tracking note for order ABCDEF12 (optional)"), { target: { value: "Delhivery 998" } });
+  fireEvent.click(add);
+  await waitFor(() =>
+    expect(axios.put).toHaveBeenCalledWith(
+      "/api/v1/order/order-status/0000000000000000abcdef12",
+      { status: "shipped", note: "Delhivery 998" }
+    )
+  );
+  expect(await screen.findByText("Tracking note saved")).toBeInTheDocument();
 });
 
 test("cancelling asks for confirmation first", async () => {
   const confirm = jest.spyOn(window, "confirm").mockReturnValue(false);
   renderPage();
-  await chooseStatus("Cancelled");
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel order" }));
   expect(confirm).toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Cancel order" })).toBeEnabled());
   expect(axios.put).not.toHaveBeenCalled();
 });
 
-test("a cancelled order's status can't be changed", async () => {
+test("a cancelled order has no status controls", async () => {
   renderPage("cancelled");
-  const select = await screen.findByRole("combobox", { name: "Status of order ABCDEF12" });
-  expect(select).toBeDisabled();
+  expect(await screen.findByText("Order ABCDEF12")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Mark as/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument();
+});
+
+test("a delivered order can't be cancelled or moved on", async () => {
+  renderPage("delivered");
+  expect(await screen.findByText("Order ABCDEF12")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Mark as/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument();
+});
+
+test("an unpaid online order waits for payment", async () => {
+  renderPage("placed", { paymentMethod: "razorpay", paymentStatus: "pending" });
+  expect(await screen.findByRole("button", { name: "Mark as Packed" })).toBeDisabled();
+  expect(screen.getByText("Waiting for the online payment before it can move on.")).toBeInTheDocument();
+});
+
+test("a refused step shows the API's message", async () => {
+  axios.put.mockRejectedValue({ response: { data: { message: "This order was changed in the meantime. Reload and try again." } } });
+  renderPage("placed");
+  fireEvent.click(await screen.findByRole("button", { name: "Mark as Packed" }));
+  expect(await screen.findByText("This order was changed in the meantime. Reload and try again.")).toBeInTheDocument();
 });
 
 test("shows payment method and status", async () => {
