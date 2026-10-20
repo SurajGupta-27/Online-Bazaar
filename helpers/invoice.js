@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import PDFDocument from "pdfkit";
 import orderModel from "../models/orderModel.js";
 import { nextSequence } from "../models/counterModel.js";
@@ -5,6 +6,16 @@ import { BRAND } from "./brand.js";
 import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, statusLabel } from "./orderStatus.js";
 
 const TIME_ZONE = "Asia/Kolkata";
+
+// Noto Sans (SIL Open Font License, assets/fonts/OFL.txt) is embedded so the
+// invoice can print ₹, which PDFKit's built-in Helvetica lacks. Each PDF
+// carries only the characters it uses. Read once, on the first invoice.
+let fonts;
+const fontData = () =>
+  (fonts ??= {
+    body: readFileSync(new URL("../assets/fonts/NotoSans-Regular.ttf", import.meta.url)),
+    bold: readFileSync(new URL("../assets/fonts/NotoSans-Bold.ttf", import.meta.url)),
+  });
 
 // An order gets an invoice once it's confirmed: Cash on Delivery orders when
 // placed, online orders once paid. Unpaid online orders never get one.
@@ -32,19 +43,17 @@ export const ensureInvoiceNumber = async (order) => {
   return updated || orderModel.findById(order._id);
 };
 
-// The PDF's built-in Helvetica only has Western European characters: map
-// common typographic ones and replace anything else, rather than print garbage.
+// Noto Sans covers Latin, Greek and Cyrillic, typographic punctuation and
+// the euro and rupee signs. Anything else (such as Devanagari or emoji) is
+// replaced, rather than printed as empty boxes.
 const pdfSafe = (value) =>
-  String(value ?? "")
-    .replace(/[‘’‚′]/g, "'")
-    .replace(/[“”„″]/g, '"')
-    .replace(/[–—−]/g, "-")
-    .replace(/…/g, "...")
-    .replace(/₹\s*/g, "Rs. ")
-    .replace(/[^\n\x20-\x7E\xA0-\xFF]/g, "?");
+  String(value ?? "").replace(
+    /[^\n\x20-\x7E\xA0-ɏ΄-ϡϰ-ϿЀ-ӿ‐-‧‰-⁞€₹]/gu,
+    "?"
+  );
 
 const money = (amount) =>
-  `Rs. ${(Number(amount) || 0).toLocaleString("en-IN", {
+  `₹${(Number(amount) || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -70,10 +79,12 @@ const PRIMARY = "#1e3a8a";
 // `compress: false` keeps the text searchable by the tests; invoices are small.
 export const buildInvoicePdf = (order, customer) =>
   new Promise((resolve, reject) => {
+    const { body, bold } = fontData();
     const doc = new PDFDocument({
       size: "A4",
       margin: 50,
       compress: false,
+      font: body,
       info: {
         Title: `Invoice ${order.invoiceNumber}`,
         Author: BRAND.name,
@@ -83,24 +94,26 @@ export const buildInvoicePdf = (order, customer) =>
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+    doc.registerFont("Body", body);
+    doc.registerFont("Bold", bold);
 
     const left = doc.page.margins.left;
     const right = doc.page.width - doc.page.margins.right;
     const width = right - left;
 
     // Header: brand on the left, "INVOICE" and its number on the right.
-    doc.fillColor(PRIMARY).font("Helvetica-Bold").fontSize(22).text(BRAND.name, left, 50);
-    doc.fillColor(MUTED).font("Helvetica").fontSize(9).text(pdfSafe(BRAND.tagline));
-    doc.fillColor(INK).font("Helvetica-Bold").fontSize(16).text("INVOICE", left, 50, { width, align: "right" });
-    doc.font("Helvetica").fontSize(10).text(order.invoiceNumber, { width, align: "right" });
+    doc.fillColor(PRIMARY).font("Bold").fontSize(22).text(BRAND.name, left, 50);
+    doc.fillColor(MUTED).font("Body").fontSize(9).text(pdfSafe(BRAND.tagline));
+    doc.fillColor(INK).font("Bold").fontSize(16).text("INVOICE", left, 50, { width, align: "right" });
+    doc.font("Body").fontSize(10).text(order.invoiceNumber, { width, align: "right" });
 
     doc.moveTo(left, 100).lineTo(right, 100).strokeColor(RULE).lineWidth(1).stroke();
 
     // Invoice details and customer, in two columns.
     const column = width / 2;
-    const label = (text, x, y) => doc.fillColor(MUTED).font("Helvetica").fontSize(9).text(text, x, y);
+    const label = (text, x, y) => doc.fillColor(MUTED).font("Body").fontSize(9).text(text, x, y);
     const value = (text, x, opts = {}) =>
-      doc.fillColor(INK).font("Helvetica").fontSize(10).text(pdfSafe(text), x, undefined, { width: column - 10, ...opts });
+      doc.fillColor(INK).font("Body").fontSize(10).text(pdfSafe(text), x, undefined, { width: column - 10, ...opts });
 
     let y = 115;
     label("Invoice number", left, y);
@@ -114,7 +127,7 @@ export const buildInvoicePdf = (order, customer) =>
     const leftEnd = doc.y;
 
     label("Billed to", left + column, y);
-    doc.fillColor(INK).font("Helvetica-Bold").fontSize(10)
+    doc.fillColor(INK).font("Bold").fontSize(10)
       .text(pdfSafe(customer?.name || "Customer"), left + column, undefined, { width: column });
     if (customer?.email) value(customer.email, left + column);
     if (customer?.phone) value(customer.phone, left + column);
@@ -132,7 +145,7 @@ export const buildInvoicePdf = (order, customer) =>
     ];
     const header = () => {
       doc.rect(left, y, width, 22).fill("#f1f5f9");
-      doc.fillColor(MUTED).font("Helvetica-Bold").fontSize(9);
+      doc.fillColor(MUTED).font("Bold").fontSize(9);
       cols.forEach((c) => doc.text(c.title, c.x + 4, y + 7, { width: c.w - 8, align: c.align }));
       y += 28;
     };
@@ -145,13 +158,13 @@ export const buildInvoicePdf = (order, customer) =>
         money(item.price),
         money(item.price * item.quantity),
       ];
-      doc.font("Helvetica").fontSize(10);
+      doc.font("Body").fontSize(10);
       const rowHeight = Math.max(...cells.map((text, i) => doc.heightOfString(text, { width: cols[i].w - 8 })));
       if (y + rowHeight > doc.page.height - 150) {
         doc.addPage();
         y = 50;
         header();
-        doc.font("Helvetica").fontSize(10);
+        doc.font("Body").fontSize(10);
       }
       doc.fillColor(INK);
       cells.forEach((text, i) => doc.text(text, cols[i].x + 4, y, { width: cols[i].w - 8, align: cols[i].align }));
@@ -166,13 +179,13 @@ export const buildInvoicePdf = (order, customer) =>
     }
     // Total.
     y += 6;
-    doc.fillColor(INK).font("Helvetica-Bold").fontSize(12)
+    doc.fillColor(INK).font("Bold").fontSize(12)
       .text("Total", right - 235, y, { width: 140, align: "right" })
       .text(money(order.total), right - 95, y, { width: 91, align: "right" });
     y += 30;
 
     // Payment.
-    doc.fillColor(MUTED).font("Helvetica").fontSize(9).text("Payment", left, y);
+    doc.fillColor(MUTED).font("Body").fontSize(9).text("Payment", left, y);
     doc.fillColor(INK).fontSize(10)
       .text(`${PAYMENT_METHOD_LABEL[order.paymentMethod] || order.paymentMethod} - ${PAYMENT_STATUS_LABEL[order.paymentStatus] || order.paymentStatus}`, left, undefined, { width });
     if (order.paidAt && order.paymentStatus === "paid") {
@@ -194,7 +207,7 @@ export const buildInvoicePdf = (order, customer) =>
     // Footer, kept inside the bottom margin so PDFKit doesn't start a new page.
     const footerY = doc.page.height - 100;
     doc.moveTo(left, footerY).lineTo(right, footerY).strokeColor(RULE).lineWidth(1).stroke();
-    doc.fillColor(MUTED).font("Helvetica").fontSize(9)
+    doc.fillColor(MUTED).font("Body").fontSize(9)
       .text(`Thank you for shopping with ${BRAND.name}.`, left, footerY + 10, { width, align: "center" })
       .text("This is a computer-generated invoice and needs no signature.", { width, align: "center" })
       .text(`${BRAND.name} by ${BRAND.owner}`, { width, align: "center" });

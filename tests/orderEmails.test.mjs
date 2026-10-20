@@ -51,7 +51,7 @@ const setup = async (api, db) => {
 
 const outbox = createOutbox();
 try {
-  await withServer(async ({ api, db, logs }) => {
+  await withServer(async ({ api, db, logs, base }) => {
     const { buyer, other, admin, phone, pen, place } = await setup(api, db);
     const orders = db.collection("orders");
 
@@ -73,10 +73,12 @@ try {
     const pdf = attachment ? attachmentBytes(attachment) : Buffer.alloc(0);
     const text = pdfText(pdf);
     check("attachment is a PDF", pdf.subarray(0, 5).toString() === "%PDF-");
+    check("invoice embeds Noto Sans, not Helvetica", /NotoSans-Bold/.test(pdf.toString("latin1")) && !/Helvetica/.test(pdf.toString("latin1")));
+    check("invoice amounts use the rupee sign", !text.includes("Rs."));
     for (const expected of [
       "Online Bazaar", "INVOICE", `INV-${year}-000001`, `#${ref}`, "Asha Rao", "asha@x.com", "98765 43210",
-      "12 MG Road, Pune", "Phone X", "Pen <b>Bold</b> & Co", "Rs. 19,599.00", "Rs. 49.50", "Rs. 99.00",
-      "Rs. 19,698.00", "Cash on Delivery - Pending", "Amount due on delivery: Rs. 19,698.00",
+      "12 MG Road, Pune", "Phone X", "Pen <b>Bold</b> & Co", "₹19,599.00", "₹49.50", "₹99.00",
+      "₹19,698.00", "Cash on Delivery - Pending", "Amount due on delivery: ₹19,698.00",
     ]) {
       check(`invoice shows "${expected}"`, text.includes(expected));
     }
@@ -182,12 +184,16 @@ try {
     // Orders confirmed before invoices existed get a number on first download.
     const buyerId = (await db.collection("users").findOne({ email: "asha@x.com" }))._id;
     const legacy = await orders.insertOne({
-      user: buyerId, items: [{ product: phone, name: "Phone X", price: 100, quantity: 1 }], total: 100,
+      user: buyerId, items: [{ product: phone, name: "Kurta – “Classic” Ελλάδα कुर्ता 🙂", price: 100, quantity: 1 }], total: 100,
       shippingAddress: "Old address", status: "delivered", paymentMethod: "cod", paymentStatus: "paid", createdAt: new Date("2025-01-05"),
     });
     const legacyPdf = await invoice(legacy.insertedId, buyer);
     const legacyDoc = await orders.findOne({ _id: legacy.insertedId });
     check("legacy order: invoice number issued on download", legacyPdf.status === 200 && legacyDoc.invoiceNumber === `INV-${year}-000004`, legacyDoc.invoiceNumber);
+    const legacyBytes = Buffer.from(await (await fetch(`${base}/api/v1/order/invoice/${legacy.insertedId}`, { headers: { Authorization: buyer } })).arrayBuffer());
+    const legacyText = pdfText(legacyBytes);
+    check("invoice prints typographic and Greek characters, replaces ones the font lacks",
+      legacyText.includes("Kurta – “Classic” Ελλάδα ?????? ?") && legacyText.includes("₹100.00"), legacyText.match(/Kurta.*/)?.[0]);
     const again = await invoice(legacy.insertedId, buyer);
     check("and kept on the next download", again.status === 200 && (await orders.findOne({ _id: legacy.insertedId })).invoiceNumber === `INV-${year}-000004`);
 
