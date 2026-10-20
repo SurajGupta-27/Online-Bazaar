@@ -28,10 +28,10 @@ await withServer(async ({ api, db }) => {
   check("non-admins can't list or update orders", denied.status === 403 && deniedUpdate.status === 403);
 
   const status = (id, s) => api("PUT", `/api/v1/order/order-status/${id}`, { status: s }, { token: admin });
-  const shipped = await status(first, "shipped");
-  check("admin changes status", shipped.status === 200 && shipped.json.order.status === "shipped", shipped.text);
+  const packed = await status(first, "packed");
+  check("admin changes status", packed.status === 200 && packed.json.order.status === "packed", packed.text);
   const mine = await api("GET", "/api/v1/order/my-orders", null, { token: shopper });
-  check("shopper sees the new status", mine.json.orders.find((o) => o._id === first).status === "shipped");
+  check("shopper sees the new status", mine.json.orders.find((o) => o._id === first).status === "packed");
   const bogus = await status(first, "teleported");
   check("unknown status -> 400", bogus.status === 400 && bogus.json.message === "Invalid order status");
   check("missing/invalid order -> 404", (await status(String(new ObjectId()), "shipped")).status === 404 && (await status("nope", "shipped")).status === 404);
@@ -39,7 +39,7 @@ await withServer(async ({ api, db }) => {
   // Two cancels at once must restore stock exactly once
   const [c1, c2] = await Promise.all([status(first, "cancelled"), status(first, "cancelled")]);
   check("cancelling returns items to stock exactly once", c1.status === 200 && c2.status === 200 && (await stock()) === 8, `stock=${await stock()}`);
-  const reopen = await status(first, "processing");
+  const reopen = await status(first, "packed");
   check("cancelled orders can't be reopened", reopen.status === 409 && reopen.json.message === "Cancelled orders can't be reopened");
   check("stock unchanged by the refused reopen", (await stock()) === 8);
 });

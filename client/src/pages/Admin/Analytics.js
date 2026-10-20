@@ -11,7 +11,10 @@ import { errorMessage } from "../../utils/errorMessage";
 const PAID = { key: "revenue", label: "Paid", color: CHART_COLORS[0] };
 const AWAITING_COD = { key: "unpaidCod", label: "Awaiting cash (COD)", color: CHART_COLORS[1] };
 const ORDERS = { key: "orders", label: "Orders", color: CHART_COLORS[0] };
-const STATUS_LABELS = { placed: "Placed", processing: "Processing", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled" };
+const STATUS_LABELS = {
+  placed: "Placed", processing: "Processing", packed: "Packed", shipped: "Shipped",
+  out_for_delivery: "Out for delivery", delivered: "Delivered", cancelled: "Cancelled",
+};
 const MAX_CATEGORIES = 8;
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 

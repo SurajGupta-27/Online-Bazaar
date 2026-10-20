@@ -1,11 +1,13 @@
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
+import { ORDER_STATUS } from "../helpers/orderStatus.js";
 
 export const TIME_ZONE = "Asia/Kolkata";
 export const LOW_STOCK_LIMIT = 5;
 const DAYS = 30;
-const STATUSES = ["placed", "processing", "shipped", "delivered", "cancelled"];
+// In tracking order; legacy statuses ("processing") only appear while orders have them.
+const STATUSES = Object.keys(ORDER_STATUS);
 
 // Definitions used throughout (orders saved before payments existed have no
 // paymentMethod or paymentStatus and count as unpaid Cash on Delivery):
@@ -157,7 +159,8 @@ export const dashboardController = async (req, res) => {
         orders: paymentOf(method).orders,
         value: round2(paymentOf(method).value),
       })),
-      statusBreakdown: STATUSES.map((status) => ({ status, orders: statusCount.get(status) || 0 })),
+      statusBreakdown: STATUSES.filter((status) => !ORDER_STATUS[status].legacy || statusCount.get(status))
+        .map((status) => ({ status, orders: statusCount.get(status) || 0 })),
       lowStock: {
         limit: LOW_STOCK_LIMIT,
         total: lowStockCount,

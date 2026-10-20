@@ -127,22 +127,27 @@ try {
     const status = (id, s) => api("PUT", `/api/v1/order/order-status/${id}`, { status: s }, { token: admin });
     const codId = cod.json.order._id;
     outbox.clear();
-    await status(codId, "processing");
-    await sleep(300);
-    check("processing: no email", outbox.read().length === 0);
+    const packed = await status(codId, "packed");
+    const [packMail] = await outbox.waitFor(1);
+    check("packed -> email", packed.status === 200 && packMail?.subject === `Order #${ref}: Packed - Online Bazaar`, packMail?.subject);
+    outbox.clear();
     const shipped = await status(codId, "shipped");
     const [shipMail] = await outbox.waitFor(1);
     check("shipped -> email", shipped.status === 200 && shipMail?.subject === `Order #${ref}: Shipped - Online Bazaar`, shipMail?.subject);
     check("status email shows progress and has a text version",
-      /Shipped/.test(shipMail?.html) && /\[x\] Shipped/.test(shipMail?.text) && /\[ \] Delivered/.test(shipMail?.text));
+      /Shipped/.test(shipMail?.html) && /\[x\] Packed/.test(shipMail?.text) && /\[x\] Shipped/.test(shipMail?.text) &&
+        /\[ \] Out for delivery/.test(shipMail?.text) && /\[ \] Delivered/.test(shipMail?.text), shipMail?.text);
     const same = await status(codId, "shipped");
     await sleep(300);
     check("setting the same status again: no email", same.status === 200 && outbox.read().length === 1);
+    await status(codId, "out_for_delivery");
+    const afterOut = await outbox.waitFor(2);
+    check("out for delivery -> email", afterOut[1]?.subject === `Order #${ref}: Out for delivery - Online Bazaar`, afterOut[1]?.subject);
     await status(codId, "delivered");
-    const afterDelivered = await outbox.waitFor(2);
-    check("delivered -> email", afterDelivered[1]?.subject === `Order #${ref}: Delivered - Online Bazaar`, afterDelivered[1]?.subject);
+    const afterDelivered = await outbox.waitFor(3);
+    check("delivered -> email", afterDelivered[2]?.subject === `Order #${ref}: Delivered - Online Bazaar`, afterDelivered[2]?.subject);
     const history = (await orders.findOne({ _id: new ObjectId(codId) })).statusHistory.map((h) => h.status).join();
-    check("history records each change once", history === "placed,processing,shipped,delivered", history);
+    check("history records each change once", history === "placed,packed,shipped,out_for_delivery,delivered", history);
 
     outbox.clear();
     await status(online.json.order._id, "cancelled");

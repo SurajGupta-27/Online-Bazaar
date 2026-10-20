@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ORDER_STATUS } from "../helpers/orderStatus.js";
 
 const orderSchema = new mongoose.Schema(
   {
@@ -23,7 +24,7 @@ const orderSchema = new mongoose.Schema(
     shippingAddress: { type: String, required: true },
     status: {
       type: String,
-      enum: ["placed", "processing", "shipped", "delivered", "cancelled"],
+      enum: Object.keys(ORDER_STATUS),
       default: "placed",
     },
     paymentMethod: { type: String, enum: ["cod", "razorpay"], default: "cod" },
@@ -41,9 +42,10 @@ const orderSchema = new mongoose.Schema(
     stockReleased: { type: Boolean, default: false },
     // A payment that arrived after the order was cancelled; refund it in Razorpay.
     refundRequired: { type: Boolean, default: false },
-    // Every status the order has had, oldest first (helpers/orderStatus.js).
+    // Every status the order has had, oldest first (helpers/orderStatus.js),
+    // with the admin's optional tracking note (e.g. courier and tracking number).
     statusHistory: {
-      type: [{ _id: false, status: String, at: Date }],
+      type: [{ _id: false, status: String, at: Date, note: String }],
       default: [],
     },
     // Issued once the order is confirmed (COD placed, or paid online):

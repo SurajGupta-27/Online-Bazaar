@@ -2,7 +2,7 @@
 // reliably) plus a plain-text version. Every value from the database goes
 // through escapeHtml() before it is placed in HTML.
 import { BRAND, formatRupees } from "./brand.js";
-import { ORDER_STATUS, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, TRACKING_STEPS, statusLabel } from "./orderStatus.js";
+import { ORDER_STATUS, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, TRACKING_STEPS, stepIndex, statusLabel } from "./orderStatus.js";
 import { shortOrderId } from "./invoice.js";
 
 export const escapeHtml = (value) =>
@@ -84,7 +84,7 @@ export const progressHtml = (status) => {
   if (status === "cancelled") {
     return `<p style="margin:16px 0;padding:10px 14px;border-radius:8px;background:#fef2f2;color:${COLORS.danger};font-weight:600;">${escapeHtml(statusLabel("cancelled"))}</p>`;
   }
-  const reached = TRACKING_STEPS.indexOf(status);
+  const reached = stepIndex(status);
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;${FONT}font-size:12px;"><tr>${TRACKING_STEPS.map((step, i) => {
     const done = i <= reached;
     return `<td align="center" style="padding:6px 2px;">
@@ -97,7 +97,7 @@ export const progressHtml = (status) => {
 export const progressText = (status) =>
   status === "cancelled"
     ? "Status: Cancelled"
-    : TRACKING_STEPS.map((step, i) => `${i <= TRACKING_STEPS.indexOf(status) ? "[x]" : "[ ]"} ${statusLabel(step)}`).join("  ");
+    : TRACKING_STEPS.map((step, i) => `${i <= stepIndex(status) ? "[x]" : "[ ]"} ${statusLabel(step)}`).join("  ");
 
 // Sent when an order is confirmed (COD placed, or paid online), with the
 // invoice PDF attached.

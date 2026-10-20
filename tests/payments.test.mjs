@@ -156,7 +156,9 @@ try {
       const codId = cod.json.order._id;
       const early = await adminPut(`mark-paid/${codId}`);
       check("COD can't be marked paid before delivery", early.status === 409 && /delivered/.test(early.json.message), early.text);
-      await adminPut(`order-status/${codId}`, { status: "delivered" });
+      for (const step of ["packed", "shipped", "out_for_delivery", "delivered"]) {
+        await adminPut(`order-status/${codId}`, { status: step });
+      }
       const markPaid = await adminPut(`mark-paid/${codId}`);
       check("admin marks delivered COD order paid", markPaid.status === 200 && markPaid.json.order.paymentStatus === "paid" && markPaid.json.order.user?.email === "buyer@x.com", markPaid.text);
       const twice = await adminPut(`mark-paid/${codId}`);

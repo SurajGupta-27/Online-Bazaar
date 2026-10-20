@@ -9,7 +9,17 @@ import {
   razorpayKeyId,
   toPaise,
 } from "../helpers/razorpay.js";
-import { historyEntry } from "../helpers/orderStatus.js";
+import {
+  ADMIN_STATUSES,
+  MAX_NOTE_LENGTH,
+  cancellable,
+  estimatedDelivery,
+  historyEntry,
+  nextStatus,
+  previousStatuses,
+  statusLabel,
+} from "../helpers/orderStatus.js";
+import { plainText } from "../helpers/plainText.js";
 import { notifyOrderConfirmed, notifyOrderStatus } from "../helpers/orderNotifications.js";
 import {
   buildInvoicePdf,
@@ -19,6 +29,10 @@ import {
 } from "../helpers/invoice.js";
 
 const PAYMENT_METHODS = ["cod", "razorpay"];
+
+// An order as sent to the browser, with the date it's expected to arrive.
+const withTracking = (order) =>
+  order && { ...order.toJSON(), estimatedDelivery: estimatedDelivery(order) };
 
 // How long an unpaid online order holds its stock. Checkout closes itself five
 // minutes earlier, so a payment can't start after its hold has been released.
@@ -302,13 +316,33 @@ export const getMyOrdersController = async (req, res) => {
       .find({ user: req.user._id })
       .populate("items.product", "slug")
       .sort({ createdAt: -1 });
-    return res.status(200).send({ success: true, orders });
+    return res.status(200).send({ success: true, orders: orders.map(withTracking) });
   } catch (error) {
     console.log(error);
     return res.status(500).send({
       success: false,
       message: "Unable to load orders",
     });
+  }
+};
+
+// One of the signed-in customer's own orders, for the order details page.
+// Someone else's order looks the same as a missing one.
+export const getMyOrderController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = mongoose.isValidObjectId(id)
+      ? await orderModel
+          .findOne({ _id: id, user: req.user._id })
+          .populate("items.product", "name slug images")
+      : null;
+    if (!order) {
+      return res.status(404).send({ success: false, message: "Order not found" });
+    }
+    return res.status(200).send({ success: true, order: withTracking(order) });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({ success: false, message: "Unable to load the order" });
   }
 };
 
@@ -319,7 +353,7 @@ export const getAllOrdersController = async (req, res) => {
       .find({})
       .populate("user", "name email")
       .sort({ createdAt: -1 });
-    return res.status(200).send({ success: true, orders });
+    return res.status(200).send({ success: true, orders: orders.map(withTracking) });
   } catch (error) {
     console.log(error);
     return res.status(500).send({
@@ -329,15 +363,32 @@ export const getAllOrdersController = async (req, res) => {
   }
 };
 
-// ADMIN: change an order's status. Cancelling returns the items to stock, and
-// a cancelled order can't be reopened (its stock has already been released).
-// Online orders can't move forward until they are paid.
+// ADMIN: move an order to its next tracking step, or cancel it, with an
+// optional tracking note (e.g. courier and tracking number) that the customer
+// sees on the timeline. Orders only move forward, one step at a time, and
+// online orders only once paid. Cancelling returns the items to stock; a
+// cancelled order can't be reopened (its stock has been released) and a
+// delivered one can't be cancelled. Sending the current status with a note
+// changes that step's note (an empty note removes it) without emailing anyone.
 export const updateOrderStatusController = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    if (!orderModel.schema.path("status").enumValues.includes(status)) {
+    if (!ADMIN_STATUSES.includes(status)) {
       return res.status(400).send({ success: false, message: "Invalid order status" });
+    }
+    let note;
+    if (req.body.note !== undefined && req.body.note !== null) {
+      if (typeof req.body.note !== "string") {
+        return res.status(400).send({ success: false, message: "Invalid tracking note" });
+      }
+      note = plainText(req.body.note);
+      if (note.length > MAX_NOTE_LENGTH) {
+        return res.status(400).send({
+          success: false,
+          message: `Tracking notes can be at most ${MAX_NOTE_LENGTH} characters`,
+        });
+      }
     }
     if (!mongoose.isValidObjectId(id)) {
       return res.status(404).send({ success: false, message: "Order not found" });
@@ -346,16 +397,39 @@ export const updateOrderStatusController = async (req, res) => {
     if (!existing) {
       return res.status(404).send({ success: false, message: "Order not found" });
     }
-
-    // Nothing changes, so nothing is recorded and no email goes out.
-    if (existing.status === status) {
+    const respond = async (message) => {
       const order = await orderModel.findById(id).populate("user", "name email");
-      return res.status(200).send({ success: true, message: "Order status unchanged", order });
+      return res.status(200).send({ success: true, message, order: withTracking(order) });
+    };
+    const conflict = (message) => res.status(409).send({ success: false, message });
+
+    // Same status: nothing is recorded and no email goes out; only the
+    // current step's note can change.
+    if (existing.status === status) {
+      if (note === undefined) return respond("Order status unchanged");
+      const index = existing.statusHistory.map((h) => h.status).lastIndexOf(status);
+      if (index === -1) return conflict("This order has no tracking history to add a note to");
+      const path = `statusHistory.${index}.note`;
+      await orderModel.updateOne(
+        { _id: id, status, [`statusHistory.${index}.status`]: status },
+        note ? { $set: { [path]: note } } : { $unset: { [path]: "" } }
+      );
+      return respond("Tracking note updated");
     }
-    const changed = { status, $push: { statusHistory: historyEntry(status) } };
+    const changed = { status, $push: { statusHistory: historyEntry(status, new Date(), note) } };
 
     if (status === "cancelled") {
-      const cancelled = await releaseOrder({ _id: id, status: { $ne: "cancelled" } }, changed);
+      if (!cancellable(existing.status)) return conflict("Delivered orders can't be cancelled");
+      const cancelled = await releaseOrder(
+        { _id: id, status: { $nin: ["cancelled", "delivered"] } },
+        changed
+      );
+      if (!cancelled) {
+        // Cancelled or delivered by another request in the meantime.
+        const current = await orderModel.findById(id).select("status");
+        if (current?.status !== "cancelled") return conflict("Delivered orders can't be cancelled");
+        return respond("Order status unchanged");
+      }
       // An online order cancelled before payment will never be paid; one
       // cancelled after payment needs its money back.
       await orderModel.updateOne({ _id: id, ...unpaidOnline }, { paymentStatus: "failed" });
@@ -363,35 +437,34 @@ export const updateOrderStatusController = async (req, res) => {
         { _id: id, paymentMethod: "razorpay", paymentStatus: "paid" },
         { refundRequired: true }
       );
-      if (cancelled) notifyOrderStatus(id, status);
-    } else {
-      if (existing.status === "cancelled") {
-        return res.status(409).send({
-          success: false,
-          message: "Cancelled orders can't be reopened",
-        });
-      }
-      if (existing.paymentMethod === "razorpay" && existing.paymentStatus !== "paid") {
-        return res.status(409).send({
-          success: false,
-          message: "This order hasn't been paid online yet",
-        });
-      }
-      const updated = await orderModel.findOneAndUpdate(
-        { _id: id, status: { $ne: "cancelled" } },
-        changed
-      );
-      if (!updated) {
-        return res.status(409).send({
-          success: false,
-          message: "Cancelled orders can't be reopened",
-        });
-      }
       notifyOrderStatus(id, status);
+      return respond("Order status updated");
     }
 
-    const order = await orderModel.findById(id).populate("user", "name email");
-    return res.status(200).send({ success: true, message: "Order status updated", order });
+    if (existing.status === "cancelled") return conflict("Cancelled orders can't be reopened");
+    if (existing.paymentMethod === "razorpay" && existing.paymentStatus !== "paid") {
+      return conflict("This order hasn't been paid online yet");
+    }
+    const expected = nextStatus(existing.status);
+    if (status !== expected) {
+      return conflict(
+        expected
+          ? `Orders move forward one step at a time: the next step is ${statusLabel(expected)}`
+          : "Delivered orders can't change status"
+      );
+    }
+    // Only from the step before, so a status changed in the meantime is never overwritten.
+    const updated = await orderModel.findOneAndUpdate(
+      { _id: id, status: { $in: previousStatuses(status) } },
+      changed
+    );
+    if (!updated) {
+      const current = await orderModel.findById(id).select("status");
+      if (current?.status === status) return respond("Order status unchanged");
+      return conflict("This order was changed in the meantime. Reload and try again.");
+    }
+    notifyOrderStatus(id, status);
+    return respond("Order status updated");
   } catch (error) {
     console.log(error);
     return res.status(500).send({
@@ -416,7 +489,9 @@ export const markOrderPaidController = async (req, res) => {
       )
       .populate("user", "name email");
     if (updated) {
-      return res.status(200).send({ success: true, message: "Order marked as paid", order: updated });
+      return res
+        .status(200)
+        .send({ success: true, message: "Order marked as paid", order: withTracking(updated) });
     }
 
     const existing = await orderModel.findById(id);

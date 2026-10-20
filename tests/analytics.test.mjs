@@ -100,8 +100,8 @@ await withServer(async ({ api, db }) => {
     JSON.stringify(a.paymentSplit));
   check("status breakdown in order, checkout-in-progress left out",
     JSON.stringify(a.statusBreakdown) === JSON.stringify([
-      { status: "placed", orders: 2 }, { status: "processing", orders: 0 }, { status: "shipped", orders: 1 },
-      { status: "delivered", orders: 1 }, { status: "cancelled", orders: 3 },
+      { status: "placed", orders: 2 }, { status: "packed", orders: 0 }, { status: "shipped", orders: 1 },
+      { status: "out_for_delivery", orders: 0 }, { status: "delivered", orders: 1 }, { status: "cancelled", orders: 3 },
     ]), JSON.stringify(a.statusBreakdown));
   check("low stock: 5 or fewer, emptiest first",
     a.lowStock?.limit === 5 && a.lowStock.total === 3 &&

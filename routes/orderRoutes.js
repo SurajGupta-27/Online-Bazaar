@@ -5,6 +5,7 @@ import {
   createOrderController,
   downloadInvoiceController,
   getAllOrdersController,
+  getMyOrderController,
   getMyOrdersController,
   markOrderPaidController,
   updateOrderStatusController,
@@ -17,6 +18,7 @@ router.post("/create-order", requireSignIn, createOrderController);
 router.post("/verify-payment", requireSignIn, verifyPaymentController);
 router.post("/cancel-payment/:id", requireSignIn, cancelPaymentController);
 router.get("/my-orders", requireSignIn, getMyOrdersController);
+router.get("/my-orders/:id", requireSignIn, getMyOrderController);
 // own orders, or any order for an admin
 router.get("/invoice/:id", requireSignIn, downloadInvoiceController);
 
