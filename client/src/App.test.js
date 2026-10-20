@@ -5,6 +5,7 @@ import App from "./App";
 import { AuthProvider } from "./context/auth";
 import { SearchProvider } from "./context/search";
 import { CartProvider } from "./context/cart";
+import { WishlistProvider } from "./context/wishlist";
 
 jest.mock("axios", () => ({
   get: jest.fn(),
@@ -41,9 +42,11 @@ const renderAt = (path) =>
     <AuthProvider>
       <SearchProvider>
         <CartProvider>
-          <MemoryRouter initialEntries={[path]}>
-            <App />
-          </MemoryRouter>
+          <WishlistProvider>
+            <MemoryRouter initialEntries={[path]}>
+              <App />
+            </MemoryRouter>
+          </WishlistProvider>
         </CartProvider>
       </SearchProvider>
     </AuthProvider>

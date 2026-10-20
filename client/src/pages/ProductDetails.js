@@ -7,6 +7,7 @@ import { useCart } from "../context/cart";
 import toast from "react-hot-toast";
 import ProductCard from "../components/Product/ProductCard";
 import Reviews from "../components/Product/Reviews";
+import WishlistButton from "../components/Product/WishlistButton";
 import { RatingSummary } from "../components/Product/StarRating";
 import { productImages } from "../utils/productImage";
 const ProductDetails = () => {
@@ -117,6 +118,7 @@ const ProductDetails = () => {
               >
                 Add to Cart
               </button>
+              <WishlistButton product={product} withLabel className="ms-2" />
             </div>
           </div>
         )}

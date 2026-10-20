@@ -286,6 +286,10 @@
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
+.product-card {
+  position: relative;
+}
+
 .product-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--ob-shadow-hover);
@@ -725,5 +729,117 @@
   .reviews-layout {
     grid-template-columns: 1fr;
     gap: 1.25rem;
+  }
+}
+
+/* Wishlist */
+.wishlist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 1px solid var(--ob-border);
+  border-radius: 999px;
+  background: var(--ob-surface);
+  color: var(--ob-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+.wishlist-btn:hover,
+.wishlist-btn.saved {
+  color: var(--ob-danger);
+}
+
+.wishlist-btn:active {
+  transform: scale(0.92);
+}
+
+.wishlist-btn.on-card {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  box-shadow: var(--ob-shadow);
+}
+
+.wishlist-btn.with-label {
+  padding: 0.55rem 1rem;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.wishlist-btn.with-label svg {
+  font-size: 1.25rem;
+}
+
+.wishlist-list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wishlist-item {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-radius);
+  background: var(--ob-surface);
+}
+
+.wishlist-image img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+}
+
+.wishlist-info {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.wishlist-name {
+  color: var(--ob-ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.price-drop {
+  color: var(--ob-success);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.wishlist-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (max-width: 576px) {
+  .wishlist-item {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .wishlist-image img {
+    width: 72px;
+    height: 72px;
+  }
+
+  .wishlist-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
   }
 }
