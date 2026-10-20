@@ -8,6 +8,11 @@ import {
   normalizeAnswer,
   normalizeEmail,
 } from "./../helpers/authHelper.js";
+import {
+  googleConfigured,
+  GoogleTokenError,
+  verifyGoogleCredential,
+} from "../helpers/google.js";
 import JWT from "jsonwebtoken";
 
 // Only these fields are ever sent to (and stored by) the browser. The flags say
@@ -145,6 +150,87 @@ export const loginController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Error in login",
+    });
+  }
+};
+
+// The account a verified Google identity signs in to: the one already linked
+// to it, else the account with the same email (which gets linked), else a new
+// customer account. Returns { user, created }, or { conflict: true } when the
+// email's account is linked to a different Google account.
+const userForGoogle = async ({ googleId, email, name }) => {
+  const linked = await userModel.findOne({ googleId });
+  if (linked) return { user: linked, created: false };
+
+  const existing = await findUserByEmail(userModel, email);
+  if (existing) {
+    // Linked to this Google account a moment ago by a simultaneous sign-in.
+    if (existing.googleId === googleId) return { user: existing, created: false };
+    if (existing.googleId) return { conflict: true };
+    existing.googleId = googleId;
+    await upgradeLegacyFields(existing);
+    await existing.save();
+    return { user: existing, created: false };
+  }
+
+  // Never an admin: role is fixed here, and nothing comes from the request.
+  const user = await userModel.create({ name, email, googleId, role: 0 });
+  return { user, created: true };
+};
+
+// POST GOOGLE SIGN-IN
+export const googleLoginController = async (req, res) => {
+  try {
+    if (!googleConfigured()) {
+      return res.status(503).send({
+        success: false,
+        message: "Google sign-in is not available right now",
+      });
+    }
+    const { credential } = req.body;
+    if (typeof credential !== "string" || !credential) {
+      return res.status(400).send({ success: false, message: "Google credential is required" });
+    }
+
+    let identity;
+    try {
+      identity = await verifyGoogleCredential(credential);
+    } catch (error) {
+      if (!(error instanceof GoogleTokenError)) throw error;
+      console.log(`Google sign-in rejected: ${error.message}`);
+      return res.status(401).send({
+        success: false,
+        message: "Google sign-in failed. Please try again.",
+      });
+    }
+
+    let result;
+    try {
+      result = await userForGoogle(identity);
+    } catch (error) {
+      // Two sign-ins for the same new account at once: the other one won.
+      if (error.code !== 11000) throw error;
+      result = await userForGoogle(identity);
+    }
+    if (result.conflict) {
+      return res.status(409).send({
+        success: false,
+        message: "This email is linked to a different Google account. Log in with your password.",
+      });
+    }
+
+    const { user, created } = result;
+    res.status(created ? 201 : 200).send({
+      success: true,
+      message: created ? "Account created with Google" : "Login successfully",
+      user: publicUser(user),
+      token: signToken(user),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Google sign-in",
     });
   }
 };

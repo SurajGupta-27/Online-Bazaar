@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerController,
   loginController,
+  googleLoginController,
   testController,
   forgotPasswordController,
   updateProfileController,
@@ -10,6 +11,7 @@ import {
 import { isAdmin, requireSignIn } from "../middlewares/authMiddleware.js";
 import {
   forgotPasswordLimiter,
+  googleLoginLimiter,
   loginLimiter,
 } from "../middlewares/rateLimiters.js";
 
@@ -22,6 +24,9 @@ router.post("/register", registerController);
 
 //LOGIN || POST
 router.post("/login", loginLimiter, loginController);
+
+//GOOGLE SIGN-IN || POST (body: { credential } = Google ID token)
+router.post("/google", googleLoginLimiter, googleLoginController);
 
 //Forgot Password || POST
 router.post("/forgot-password", forgotPasswordLimiter, forgotPasswordController);

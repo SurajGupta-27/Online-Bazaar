@@ -55,6 +55,10 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       CLOUDINARY_API_KEY: "",
       CLOUDINARY_API_SECRET: "",
       CLOUDINARY_API_URL: "http://127.0.0.1:9/v1_1",
+      // And Google: tests that sign in with Google start tests/mockGoogle.mjs
+      // and pass googleEnv(mock).
+      GOOGLE_CLIENT_ID: "",
+      GOOGLE_CERTS_URL: "http://127.0.0.1:9/oauth2/v1/certs",
       ...env,
     },
   });
