@@ -4,6 +4,7 @@ import Header from "./Header";
 import { Helmet } from "react-helmet";
 import { Toaster } from "react-hot-toast";
 import { BRAND, pageTitle } from "../../brand";
+import ShoppingAssistant from "../Assistant/ShoppingAssistant";
 // Defaults live in the parameters: React 19 ignores defaultProps on
 // function components.
 const Layout = ({
@@ -29,6 +30,7 @@ const Layout = ({
         {children}
       </main>
       <Footer />
+      <ShoppingAssistant />
     </div>
   );
 };

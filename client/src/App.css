@@ -1385,3 +1385,284 @@
   max-width: 560px;
   margin-inline: auto;
 }
+
+/* ============ Bazaar AI shopping assistant ============ */
+.assistant-launcher {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1040;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ob-primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: var(--ob-shadow-hover);
+}
+
+.assistant-launcher:hover {
+  background: var(--ob-primary-dark);
+}
+
+.assistant-launcher svg {
+  color: var(--ob-accent);
+  font-size: 1.15rem;
+}
+
+.assistant-panel {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 2.5rem));
+  height: min(620px, calc(100vh - 2.5rem));
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-radius);
+  background: var(--ob-surface);
+  box-shadow: var(--ob-shadow-hover);
+  overflow: hidden;
+}
+
+.assistant-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  background: var(--ob-primary);
+  color: #fff;
+}
+
+.assistant-header h2 {
+  flex: 1;
+  margin: 0;
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.assistant-header-icon {
+  color: var(--ob-accent);
+}
+
+.assistant-icon-btn {
+  display: inline-flex;
+  padding: 0.4rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #fff;
+}
+
+.assistant-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.assistant-notice {
+  margin: 0;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--ob-border);
+  background: var(--ob-accent-soft);
+  color: var(--ob-muted);
+  font-size: 0.75rem;
+}
+
+.assistant-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  overflow-y: auto;
+  background: var(--ob-bg);
+}
+
+.assistant-welcome p {
+  color: var(--ob-muted);
+  font-size: 0.9rem;
+}
+
+.assistant-msg {
+  max-width: 92%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.85rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.assistant-msg.from-user {
+  align-self: flex-end;
+  background: var(--ob-primary);
+  color: #fff;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.assistant-msg.from-bot {
+  align-self: flex-start;
+  border: 1px solid var(--ob-border);
+  background: var(--ob-surface);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.assistant-msg.is-error {
+  border-color: var(--ob-danger);
+  color: var(--ob-danger);
+}
+
+.assistant-typing {
+  color: var(--ob-muted);
+  font-style: italic;
+}
+
+.assistant-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assistant-pick {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border: 1px solid var(--ob-border);
+  border-radius: 0.65rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.assistant-pick:hover,
+.assistant-pick:focus-visible {
+  border-color: var(--ob-primary);
+  box-shadow: var(--ob-shadow);
+}
+
+.assistant-pick img {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 0.5rem;
+  background: var(--ob-bg);
+  object-fit: contain;
+}
+
+.assistant-pick-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.assistant-pick-name {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.assistant-pick-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assistant-pick-meta .price {
+  font-size: 0.95rem;
+}
+
+.assistant-pick-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--ob-muted);
+  font-size: 0.8rem;
+}
+
+.assistant-pick-rating .star-rating {
+  color: var(--ob-star);
+  font-size: 0.7rem;
+}
+
+.assistant-pick-reason {
+  color: var(--ob-muted);
+  font-size: 0.8rem;
+}
+
+.assistant-mode {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ob-bg);
+  color: var(--ob-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.assistant-mode.is-ai {
+  background: var(--ob-primary-soft);
+  color: var(--ob-primary);
+}
+
+.assistant-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.assistant-suggestions button {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--ob-border);
+  border-radius: 999px;
+  background: var(--ob-surface);
+  color: var(--ob-primary);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.assistant-suggestions button:hover {
+  border-color: var(--ob-primary);
+}
+
+.assistant-followups {
+  padding: 0.5rem 0.85rem 0;
+  border-top: 1px solid var(--ob-border);
+}
+
+.assistant-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem 0.85rem;
+}
+
+.assistant-form .form-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.assistant-count {
+  width: 100%;
+  color: var(--ob-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 576px) {
+  .assistant-launcher {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .assistant-panel {
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}
