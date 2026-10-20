@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import AdminMenu from "../../components/Layout/AdminMenu";
 import { formatPrice } from "../../utils/formatPrice";
 import PaymentInfo from "../../components/PaymentInfo";
+import InvoiceButton from "../../components/InvoiceButton";
 import Layout from "../../components/Layout/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -112,6 +113,7 @@ const AdminOrders = () => {
                         Mark cash received
                       </button>
                     )}
+                    <InvoiceButton order={order} />
                   </div>
                   <small className="text-muted d-block mt-1">
                     {new Date(order.createdAt).toLocaleDateString()}

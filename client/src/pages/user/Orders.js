@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import UserMenu from "../../components/Layout/UserMenu";
 import { formatPrice } from "../../utils/formatPrice";
 import PaymentInfo from "../../components/PaymentInfo";
+import InvoiceButton from "../../components/InvoiceButton";
 import Layout from "../../components/Layout/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -43,7 +44,10 @@ const Orders = () => {
                   </div>
                   <p className="mb-1 mt-2">{order.items.map((item) => `${item.name} x${item.quantity}`).join(", ")}</p>
                   <PaymentInfo order={order} />
-                  <strong>{formatPrice(order.total)}</strong>
+                  <div className="d-flex align-items-center gap-3 flex-wrap">
+                    <strong>{formatPrice(order.total)}</strong>
+                    <InvoiceButton order={order} />
+                  </div>
                   <small className="text-muted d-block mt-1">
                     {new Date(order.createdAt).toLocaleDateString()}
                   </small>
