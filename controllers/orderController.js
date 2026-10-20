@@ -21,6 +21,7 @@ import {
 } from "../helpers/orderStatus.js";
 import { plainText } from "../helpers/plainText.js";
 import { notifyOrderConfirmed, notifyOrderStatus } from "../helpers/orderNotifications.js";
+import { productChanged } from "../helpers/productAlerts.js";
 import {
   buildInvoicePdf,
   ensureInvoiceNumber,
@@ -39,11 +40,18 @@ const withTracking = (order) =>
 const holdSeconds = () => Number(process.env.PAYMENT_HOLD_SECONDS) || 15 * 60;
 const checkoutTimeoutSeconds = () => Math.max(60, holdSeconds() - 5 * 60);
 
+// Returns items to stock. A product that was sold out is back in stock, so
+// the people waiting for it are emailed (helpers/productAlerts.js).
 const restock = (items) =>
   Promise.all(
-    items.map((item) =>
-      productModel.updateOne({ _id: item.product }, { $inc: { quantity: item.quantity } })
-    )
+    items.map(async (item) => {
+      const before = await productModel
+        .findOneAndUpdate({ _id: item.product }, { $inc: { quantity: item.quantity } })
+        .select("price quantity");
+      if (before) {
+        productChanged(before._id, before, { price: before.price, quantity: before.quantity + item.quantity });
+      }
+    })
   );
 
 // Atomically marks a matching order's stock as released and applies `update`,

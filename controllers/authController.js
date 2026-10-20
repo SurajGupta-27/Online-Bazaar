@@ -351,7 +351,11 @@ export const getAllUsersController = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).send({
       success: true,
-      users: users.map((user) => ({ ...publicUser(user), createdAt: user.createdAt })),
+      // A customer's own email alert settings aren't the admin's business.
+      users: users.map((user) => {
+        const { alerts, ...fields } = publicUser(user);
+        return { ...fields, createdAt: user.createdAt };
+      }),
     });
   } catch (error) {
     console.log(error);

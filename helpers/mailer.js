@@ -33,7 +33,7 @@ const oneLine = (value) => String(value ?? "").replace(/[\r\n]+/g, " ").trim();
 // Sends one email and resolves when done; rejects on failure. Returns false
 // (and sends nothing) when email isn't configured. Callers that must not be
 // slowed down or broken by email use sendInBackground() instead.
-export const sendMail = async ({ to, subject, html, text, attachments = [] }) => {
+export const sendMail = async ({ to, subject, html, text, attachments = [], headers, list }) => {
   if (!emailConfigured()) {
     console.log(`Email not configured; skipped "${oneLine(subject)}"`);
     return false;
@@ -45,6 +45,9 @@ export const sendMail = async ({ to, subject, html, text, attachments = [] }) =>
     html,
     text,
     attachments,
+    ...(headers && { headers }),
+    // e.g. { unsubscribe: url }: Nodemailer writes the List-Unsubscribe header.
+    ...(list && { list }),
   });
   if (process.env.EMAIL_OUTBOX) {
     await appendFile(process.env.EMAIL_OUTBOX, `${info.message.replace(/\n/g, " ")}\n`);

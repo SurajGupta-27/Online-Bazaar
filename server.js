@@ -12,6 +12,7 @@ import wishlistRoutes from "./routes/wishlistRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import alertRoutes from "./routes/alertRoutes.js";
 import { releaseExpiredPayments } from "./controllers/orderController.js";
+import { processAlertQueue } from "./helpers/productAlerts.js";
 import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
@@ -90,6 +91,14 @@ setInterval(() => {
   if (mongoose.connection.readyState !== 1) return;
   releaseExpiredPayments().catch((error) => console.log(error));
 }, sweepSeconds * 1000).unref();
+
+// Send price-drop and back-in-stock alerts that had to wait (retries, the
+// one-a-day rule, the daily email limit).
+const alertSweepSeconds = Number(process.env.ALERT_SWEEP_SECONDS) || 300;
+setInterval(() => {
+  if (mongoose.connection.readyState !== 1) return;
+  processAlertQueue();
+}, alertSweepSeconds * 1000).unref();
 
 //run listen
 app.listen(PORT, () => {

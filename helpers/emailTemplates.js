@@ -56,8 +56,10 @@ const expectedLine = (order) => {
 const button = (href, text) =>
   `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:${COLORS.primary};color:#ffffff;text-decoration:none;font-weight:600;${FONT}">${escapeHtml(text)}</a>`;
 
-// The shared frame: brand header, a heading, the body, a footer.
-const layout = ({ preheader, heading, body }) => `<!doctype html>
+// The shared frame: brand header, a heading, the body, a footer. `footer` is
+// HTML (already escaped) saying why the customer is getting this email.
+const ORDER_FOOTER = "You're receiving this because you placed an order with us.";
+const layout = ({ preheader, heading, body, footer = ORDER_FOOTER }) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(heading)}</title></head>
 <body style="margin:0;padding:0;background:${COLORS.bg};">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</span>
@@ -73,7 +75,7 @@ ${body}
 </td></tr>
 <tr><td style="padding:18px 28px;border-top:1px solid ${COLORS.border};${FONT}color:${COLORS.muted};font-size:12px;">
 ${escapeHtml(BRAND.name)} &middot; ${escapeHtml(BRAND.tagline)}<br>
-You're receiving this because you placed an order with us.
+${footer}
 </td></tr>
 </table>
 </td></tr>
@@ -212,6 +214,120 @@ ${itemsTable(order)}
       `Delivering to: ${order.shippingAddress}`,
       "",
       `Track your order: ${trackUrl}`,
+    ].join("\n"),
+  };
+};
+
+// --- Price-drop and back-in-stock alerts (helpers/productAlerts.js) ---------
+
+export const productUrl = (product) => storeUrl(`/product/${encodeURIComponent(product.slug)}`);
+
+// The main Cloudinary image, resized and as JPEG (which every email client
+// shows), or null for products without one.
+const emailImage = (product) => {
+  const url = product.images?.[0]?.url;
+  return url ? url.replace("/image/upload/", "/image/upload/c_limit,w_240,q_auto,f_jpg/") : null;
+};
+
+const productBlock = (product, details) => {
+  const image = emailImage(product);
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid ${COLORS.border};border-radius:10px;${FONT}">
+<tr>
+${image ? `<td width="120" style="padding:14px;"><img src="${escapeHtml(image)}" alt="" width="120" style="display:block;max-width:120px;height:auto;border-radius:8px;"></td>` : ""}
+<td style="padding:14px;vertical-align:top;">
+<div style="font-weight:700;font-size:16px;margin-bottom:6px;">${escapeHtml(product.name)}</div>
+${details}
+</td>
+</tr>
+</table>`;
+};
+
+// Why they got it, and the links to stop it: one click for this kind, or the
+// profile page for both.
+const alertFooter = (reason, unsubscribeUrl, label) =>
+  `You're receiving this because ${escapeHtml(reason)}.<br>
+<a href="${escapeHtml(unsubscribeUrl)}" style="color:${COLORS.muted};">Unsubscribe from ${escapeHtml(label)}</a> &middot;
+<a href="${escapeHtml(storeUrl("/dashboard/user/profile"))}" style="color:${COLORS.muted};">Manage email alerts</a>`;
+
+const alertFooterText = (reason, unsubscribeUrl, label) =>
+  [`You're receiving this because ${reason}.`, `Unsubscribe from ${label}: ${unsubscribeUrl}`, `Manage email alerts: ${storeUrl("/dashboard/user/profile")}`].join("\n");
+
+const firstNameOf = (customer) => String(customer?.name || "there").split(" ")[0];
+
+// A wishlist product is cheaper than when the customer saved it.
+export const priceDropEmail = (customer, product, { oldPrice, newPrice, unsubscribeUrl }) => {
+  const saving = Math.round((oldPrice - newPrice) * 100) / 100;
+  const percent = Math.floor((saving / oldPrice) * 100);
+  const savingText = `You save ${formatRupees(saving)}${percent >= 1 ? ` (${percent}%)` : ""}`;
+  const soldOut = !(product.quantity > 0);
+  const reason = "this product is on your wishlist";
+  const label = "price-drop alerts";
+  const url = productUrl(product);
+  return {
+    subject: `Price drop: ${product.name} is now ${formatRupees(newPrice)} - ${BRAND.name}`,
+    html: layout({
+      preheader: `Now ${formatRupees(newPrice)}, down from ${formatRupees(oldPrice)}. ${savingText}.`,
+      heading: "A wishlist item just got cheaper",
+      body: `
+<p style="margin:0 0 12px;">Hi ${escapeHtml(firstNameOf(customer))}, good news: the price of something on your wishlist has dropped.</p>
+${productBlock(
+  product,
+  `<div style="color:${COLORS.muted};">Was <span style="text-decoration:line-through;">${escapeHtml(formatRupees(oldPrice))}</span> when you saved it</div>
+<div style="font-size:20px;font-weight:800;margin:4px 0;">Now ${escapeHtml(formatRupees(newPrice))}</div>
+<div style="color:${COLORS.success};font-weight:700;">${escapeHtml(savingText)}</div>
+${soldOut ? `<div style="color:${COLORS.danger};margin-top:6px;">Currently out of stock</div>` : ""}`
+)}
+<p style="margin:0;">${button(url, "View product")}</p>`,
+      footer: alertFooter(reason, unsubscribeUrl, label),
+    }),
+    text: [
+      `Hi ${firstNameOf(customer)}, the price of something on your wishlist has dropped.`,
+      "",
+      product.name,
+      `Was: ${formatRupees(oldPrice)} (when you saved it)`,
+      `Now: ${formatRupees(newPrice)}`,
+      savingText,
+      ...(soldOut ? ["Currently out of stock"] : []),
+      "",
+      `View product: ${url}`,
+      "",
+      alertFooterText(reason, unsubscribeUrl, label),
+    ].join("\n"),
+  };
+};
+
+// A product the customer asked about (or has on their wishlist) is back in stock.
+export const backInStockEmail = (customer, product, { requested, unsubscribeUrl }) => {
+  const reason = requested
+    ? "you asked us to tell you when this product is back in stock"
+    : "this product is on your wishlist";
+  const label = "back-in-stock alerts";
+  const url = productUrl(product);
+  return {
+    subject: `Back in stock: ${product.name} - ${BRAND.name}`,
+    html: layout({
+      preheader: `${product.name} is available again at ${formatRupees(product.price)}.`,
+      heading: "It's back in stock",
+      body: `
+<p style="margin:0 0 12px;">Hi ${escapeHtml(firstNameOf(customer))}, ${escapeHtml(requested ? "the product you were waiting for" : "a product on your wishlist")} is available again. Popular items can sell out quickly.</p>
+${productBlock(
+  product,
+  `<div style="font-size:20px;font-weight:800;margin:4px 0;">${escapeHtml(formatRupees(product.price))}</div>
+<div style="color:${COLORS.success};font-weight:700;">In stock</div>`
+)}
+<p style="margin:0;">${button(url, "Buy now")}</p>`,
+      footer: alertFooter(reason, unsubscribeUrl, label),
+    }),
+    text: [
+      `Hi ${firstNameOf(customer)}, ${requested ? "the product you were waiting for" : "a product on your wishlist"} is back in stock.`,
+      "",
+      product.name,
+      `Price: ${formatRupees(product.price)}`,
+      "",
+      `Buy now: ${url}`,
+      "",
+      alertFooterText(reason, unsubscribeUrl, label),
     ].join("\n"),
   };
 };

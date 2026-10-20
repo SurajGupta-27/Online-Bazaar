@@ -19,6 +19,9 @@ const wishlistItemSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    // The price in the last price-drop email about it: the next one goes out
+    // only if the price falls below this (and below priceWhenAdded).
+    lastAlertedPrice: Number,
   },
   { timestamps: true }
 );

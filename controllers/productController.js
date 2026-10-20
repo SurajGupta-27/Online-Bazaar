@@ -3,6 +3,7 @@ import categoryModel from "../models/categoryModel.js";
 import reviewModel from "../models/reviewModel.js";
 import wishlistModel from "../models/wishlistModel.js";
 import restockRequestModel from "../models/restockRequestModel.js";
+import alertModel from "../models/alertModel.js";
 import fs from "fs";
 import slugify from "slugify";
 import { escapeRegex } from "../helpers/escapeRegex.js";
@@ -17,6 +18,7 @@ import {
   deleteImages,
   uploadImage,
 } from "../helpers/cloudinary.js";
+import { productChanged } from "../helpers/productAlerts.js";
 
 const isBlank = (value) => value === undefined || String(value).trim() === "";
 
@@ -252,6 +254,7 @@ export const deleteProductController = async (req, res) => {
         reviewModel.deleteMany({ product: deleted._id }),
         wishlistModel.deleteMany({ product: deleted._id }),
         restockRequestModel.deleteMany({ product: deleted._id }),
+        alertModel.deleteMany({ product: deleted._id }),
       ]);
     }
     await deleteImages(deleted?.images?.map((image) => image.publicId));
@@ -300,6 +303,7 @@ export const updateProductController = async (req, res) => {
     const keptIds = new Set(kept.map((image) => image.publicId));
     const removed = products.images.filter((image) => !keptIds.has(image.publicId));
     const fields = productFields(req.fields);
+    const before = { price: products.price, quantity: products.quantity };
     products.set({ ...fields, slug: await uniqueSlug(fields.name, req.params.pid) });
     products.images = order.map((entry) => entry.existing || upload.images[entry.upload]);
     // Once a product has Cloudinary images its old MongoDB photo is not used.
@@ -311,6 +315,8 @@ export const updateProductController = async (req, res) => {
       throw error;
     }
     await deleteImages(removed.map((image) => image.publicId));
+    // Price-drop and back-in-stock emails, queued in the background.
+    productChanged(products._id, before, { price: products.price, quantity: products.quantity });
     res.status(201).send({
       success: true,
       message: "Product Updated Successfully",
