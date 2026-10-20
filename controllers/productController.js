@@ -317,10 +317,27 @@ export const updateProductController = async (req, res) => {
   }
 };
 
+// "Sort by" choices for product lists. Each ends with _id so the order is
+// stable and paging never repeats or skips a product.
+const SORTS = {
+  newest: { createdAt: -1, _id: -1 },
+  price_asc: { price: 1, _id: 1 },
+  price_desc: { price: -1, _id: -1 },
+  rating: { ratingAverage: -1, ratingCount: -1, _id: -1 },
+};
+// The sort for a request value (default newest), or null if it isn't one of
+// SORTS (hasOwn, so "constructor" and friends don't count).
+const sortFor = (value = "newest") =>
+  typeof value === "string" && Object.hasOwn(SORTS, value) ? SORTS[value] : null;
+
 // filters
 export const productFiltersController = async (req, res) => {
   try {
     const { checked = [], radio = [] } = req.body;
+    const sort = sortFor(req.body.sort);
+    if (!sort) {
+      return res.status(400).send({ success: false, message: "Invalid sort" });
+    }
     if (!Array.isArray(checked) || !checked.every((id) => mongoose.isValidObjectId(id))) {
       return res.status(400).send({ success: false, message: "Invalid category filter" });
     }
@@ -338,7 +355,7 @@ export const productFiltersController = async (req, res) => {
       args.price = { $gte: min };
       if (max !== null) args.price.$lt = max;
     }
-    const products = await productModel.find(args).select("-photo").populate("category");
+    const products = await productModel.find(args).select("-photo").sort(sort).populate("category");
     res.status(200).send({
       success: true,
       products,
@@ -372,15 +389,20 @@ export const productCountController = async (req, res) => {
 // product list base on page
 export const productListController = async (req, res) => {
   try {
-    // ?perPage= lets the admin list show more per page (1-48, default 6).
+    // ?perPage= lets the admin list show more per page (1-48, default 6);
+    // ?sort= is one of SORTS (default newest).
     const perPage = Math.min(Math.max(parseInt(req.query.perPage, 10) || 6, 1), 48);
     const page = Math.max(parseInt(req.params.page, 10) || 1, 1);
+    const sort = sortFor(req.query.sort);
+    if (!sort) {
+      return res.status(400).send({ success: false, message: "Invalid sort" });
+    }
     const products = await productModel
       .find({})
       .select("-photo")
+      .sort(sort)
       .skip((page - 1) * perPage)
-      .limit(perPage)
-      .sort({ createdAt: -1 });
+      .limit(perPage);
     res.status(200).send({
       success: true,
       products,

@@ -7,11 +7,25 @@ import { Prices } from "../components/Prices";
 import ProductCard from "../components/Product/ProductCard";
 import { BiCategory, BiPackage, BiShieldQuarter } from "react-icons/bi";
 import { BRAND } from "../brand";
+
+// "Sort by" choices; the values are the API's sort names.
+export const SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
+  { value: "rating", label: "Highest rated" },
+];
+
+// The product-list URL for a page; the default sort isn't sent.
+const listUrl = (page, sort) =>
+  `/api/v1/product/product-list/${page}${sort === "newest" ? "" : `?sort=${sort}`}`;
+
 const HomePage = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [checked, setChecked] = useState([]);
   const [radio, setRadio] = useState([]);
+  const [sort, setSort] = useState("newest");
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -55,8 +69,12 @@ const HomePage = () => {
         setLoading(true);
         setError("");
         const { data } = filtersActive
-          ? await axios.post("/api/v1/product/product-filters", { checked, radio })
-          : await axios.get("/api/v1/product/product-list/1");
+          ? await axios.post("/api/v1/product/product-filters", {
+              checked,
+              radio,
+              ...(sort === "newest" ? {} : { sort }),
+            })
+          : await axios.get(listUrl(1, sort));
         if (version !== requestVersion.current) return;
         setProducts(data?.products || []);
         setPage(1);
@@ -72,7 +90,7 @@ const HomePage = () => {
       }
     };
     load();
-  }, [checked, radio, filtersActive]);
+  }, [checked, radio, filtersActive, sort]);
 
   //load more (unfiltered list only)
   const loadMore = async () => {
@@ -80,7 +98,7 @@ const HomePage = () => {
     const nextPage = page + 1;
     try {
       setLoading(true);
-      const { data } = await axios.get(`/api/v1/product/product-list/${nextPage}`);
+      const { data } = await axios.get(listUrl(nextPage, sort));
       if (version !== requestVersion.current) return;
       setProducts((current) => [...current, ...(data?.products || [])]);
       setPage(nextPage);
@@ -203,9 +221,25 @@ const HomePage = () => {
               <h2 className="section-heading">
                 {filtersActive ? "Filtered products" : "All products"}
               </h2>
-              {!filtersActive && total > 0 && (
-                <span className="text-muted">{total} items</span>
-              )}
+              <div className="section-tools">
+                {!filtersActive && total > 0 && (
+                  <span className="text-muted">{total} items</span>
+                )}
+                <label className="sort-control">
+                  <span>Sort by</span>
+                  <select
+                    className="form-select form-select-sm"
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
             {error && <div className="alert alert-warning" role="alert">{error}</div>}
             {!loading && !error && products.length === 0 && (

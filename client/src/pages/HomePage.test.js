@@ -115,3 +115,38 @@ test("product cards show prices in rupees", async () => {
   });
   expect(screen.getByText("₹1,299")).toBeInTheDocument();
 });
+
+test("sort by asks the API for that order, for the list, load more and filters", async () => {
+  axios.get.mockImplementation((url) => {
+    if (url === "/api/v1/product/product-count") return Promise.resolve({ data: { total: 20 } });
+    if (url === "/api/v1/category/get-category") {
+      return Promise.resolve({
+        data: { success: true, category: [{ _id: "c1", name: "Books", slug: "books" }] },
+      });
+    }
+    if (url === "/api/v1/product/product-list/1?sort=price_asc") {
+      return Promise.resolve({ data: { products: [product("cheap", "Cheapest Item")] } });
+    }
+    if (url === "/api/v1/product/product-list/2?sort=price_asc") {
+      return Promise.resolve({ data: { products: [product("next", "Next Cheapest")] } });
+    }
+    return Promise.resolve({ data: { products: [product("u1", "Newest Item")] } });
+  });
+  renderPage();
+  const select = await screen.findByRole("combobox", { name: "Sort by" });
+  expect(select).toHaveValue("newest");
+  expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual([
+    "Newest", "Price: low to high", "Price: high to low", "Highest rated",
+  ]);
+
+  fireEvent.change(select, { target: { value: "price_asc" } });
+  expect(await screen.findAllByText("Cheapest Item")).not.toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+  expect(await screen.findAllByText("Next Cheapest")).not.toHaveLength(0);
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "Books" }));
+  await screen.findAllByText("Filtered Book");
+  expect(axios.post).toHaveBeenLastCalledWith("/api/v1/product/product-filters", {
+    checked: ["c1"], radio: [], sort: "price_asc",
+  });
+});
