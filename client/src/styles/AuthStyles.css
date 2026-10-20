@@ -52,3 +52,11 @@
   border-color: var(--ob-primary-dark);
   background: var(--ob-primary-dark);
 }
+
+/* "Signed in with Google" on the profile form */
+.form-container form .profile-note {
+  margin: -0.5rem 0 1rem;
+  color: var(--ob-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}

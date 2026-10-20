@@ -22,6 +22,8 @@ const CartPage = () => {
   const navigate = useNavigate();
   const [placingOrder, setPlacingOrder] = React.useState(false);
   const [paymentMethod, setPaymentMethod] = React.useState("cod");
+  // Accounts created with Google start without a phone number and address.
+  const profileComplete = Boolean(auth?.user?.phone && auth?.user?.address);
 
   //total price
   const totalPrice = () => {
@@ -203,7 +205,7 @@ const CartPage = () => {
             <p>Total | Checkout | Payment</p>
             <hr />
             <h4>Total : {totalPrice()} </h4>
-            {auth?.user?.address ? (
+            {auth?.token && profileComplete ? (
               <>
                 <div className="mb-3">
                   <h4>Current Address</h4>
@@ -252,12 +254,17 @@ const CartPage = () => {
             ) : (
               <div className="mb-3">
                 {auth?.token ? (
-                  <button
-                    className="btn btn-outline-warning"
-                    onClick={() => navigate("/dashboard/user/profile")}
-                  >
-                    Update Address
-                  </button>
+                  <>
+                    <p className="text-muted">
+                      Add your phone number and delivery address to your profile before checkout.
+                    </p>
+                    <button
+                      className="btn btn-outline-warning"
+                      onClick={() => navigate("/dashboard/user/profile", { state: "/cart" })}
+                    >
+                      Complete your profile
+                    </button>
+                  </>
                 ) : (
                   <button
                     className="btn btn-outline-warning"

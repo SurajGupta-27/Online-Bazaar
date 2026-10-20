@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import axios from "axios";
 import CartPage from "./CartPage";
 import { AuthProvider } from "../context/auth";
@@ -21,7 +21,7 @@ const product = (id, name, price, stock) => ({
 beforeEach(() => {
   localStorage.setItem(
     "auth",
-    JSON.stringify({ user: { name: "Sam", address: "1 Road" }, token: fakeToken() })
+    JSON.stringify({ user: { name: "Sam", phone: "98765", address: "1 Road" }, token: fakeToken() })
   );
   // Saved before cartQuantity existed: both lines default to 1.
   localStorage.setItem(
@@ -41,12 +41,40 @@ const renderCart = () =>
             <Routes>
               <Route path="/cart" element={<CartPage />} />
               <Route path="/dashboard/user/orders" element={<div>Orders page</div>} />
+              <Route path="/dashboard/user/profile" element={<ProfileStub />} />
             </Routes>
           </MemoryRouter>
         </CartProvider>
       </SearchProvider>
     </AuthProvider>
   );
+
+const ProfileStub = () => <div>Profile page, back to {useLocation().state}</div>;
+
+test("a Google account without a phone or address is asked to complete its profile", async () => {
+  localStorage.setItem(
+    "auth",
+    JSON.stringify({ user: { name: "Gia", hasPassword: false, googleLinked: true }, token: fakeToken() })
+  );
+  renderCart();
+  expect(
+    await screen.findByText(/Add your phone number and delivery address to your profile/)
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Place order/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Complete your profile" }));
+  expect(await screen.findByText("Profile page, back to /cart")).toBeInTheDocument();
+});
+
+test("a phone number alone isn't enough to check out", async () => {
+  localStorage.setItem(
+    "auth",
+    JSON.stringify({ user: { name: "Gia", phone: "98765" }, token: fakeToken() })
+  );
+  renderCart();
+  expect(await screen.findByRole("button", { name: "Complete your profile" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Place order/ })).not.toBeInTheDocument();
+});
 
 
 test("quantity choices are limited by stock (max 10) and default to 1", async () => {

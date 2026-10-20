@@ -2,7 +2,7 @@
 // phone or address. Password login and forgot-password must treat them like
 // unknown accounts, and the profile page lets them add all of these.
 import JWT from "jsonwebtoken";
-import { withServer, check } from "./harness.mjs";
+import { withServer, check, ObjectId } from "./harness.mjs";
 
 const isHash = (v) => /^\$2[aby]\$/.test(v || "");
 const noSecrets = (u) => u && !("password" in u) && !("answer" in u) && !("googleId" in u);
@@ -29,8 +29,25 @@ await withServer(async ({ api, db }) => {
   check("rejected resets leave the account without a password or answer",
     !("password" in untouched) && !("answer" in untouched), JSON.stringify(untouched));
 
+  // No checkout until the profile has a phone number and an address.
+  const productId = new ObjectId();
+  await db.collection("products").insertOne({
+    _id: productId, name: "Pen", slug: "pen", description: "d", price: 10, category: new ObjectId(), quantity: 5,
+  });
+  const order = (t) => api("POST", "/api/v1/order/create-order",
+    { shippingAddress: "Somewhere", items: [{ product: productId.toString(), quantity: 1 }] }, { token: t });
+  const blocked = await order(token);
+  check("order without phone and address -> 400 asking to complete the profile",
+    blocked.status === 400 && /profile/.test(blocked.json?.message || ""), blocked.text);
+  const phoneOnly = await users.insertOne({ name: "Pia", email: "pia@example.com", googleId: "google-sub-2", phone: "123", role: 0 });
+  const phoneOnlyOrder = await order(JWT.sign({ _id: phoneOnly.insertedId.toString() }, "test-secret", { expiresIn: "1h" }));
+  check("order with a phone but no address -> 400", phoneOnlyOrder.status === 400, phoneOnlyOrder.text);
+  check("blocked orders reserve no stock and create no order",
+    (await db.collection("products").findOne({ _id: productId })).quantity === 5 &&
+    (await db.collection("orders").countDocuments()) === 0);
+
   // Profile: phone and address only.
-  const p1 = await api("PUT", "/api/v1/auth/profile", { phone: " 98765 43210 ", address: " 1 MG Road " }, { token });
+  const p1 =await api("PUT", "/api/v1/auth/profile", { phone: " 98765 43210 ", address: " 1 MG Road " }, { token });
   check("Google-only account can add phone and address", p1.status === 200 &&
     p1.json.updatedUser.phone === "98765 43210" && p1.json.updatedUser.address === "1 MG Road", p1.text);
   check("profile response has no secrets", noSecrets(p1.json?.updatedUser), JSON.stringify(p1.json?.updatedUser));
@@ -38,6 +55,8 @@ await withServer(async ({ api, db }) => {
     p1.json?.updatedUser.hasPassword === false && p1.json?.updatedUser.googleLinked === true);
   const noPassword = await users.findOne({ _id: insertedId });
   check("a profile update without a password doesn't create one", !("password" in noPassword));
+  const placed = await order(token);
+  check("with a complete profile the order goes through", placed.json?.success === true, placed.text);
 
   const short = await api("PUT", "/api/v1/auth/profile", { password: "12345" }, { token });
   check("too-short password rejected", short.status === 400, short.text);

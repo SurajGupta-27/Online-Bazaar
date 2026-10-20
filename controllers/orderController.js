@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import orderModel from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
+import userModel from "../models/userModel.js";
 import {
   createRazorpayOrder,
   isValidPaymentSignature,
@@ -68,6 +69,14 @@ export const createOrderController = async (req, res) => {
       return res.status(400).send({
         success: false,
         message: "A shipping address is required",
+      });
+    }
+    // Accounts created with Google start without these; delivery needs both.
+    const buyer = await userModel.findById(req.user._id).select("phone address");
+    if (!buyer?.phone || !buyer?.address) {
+      return res.status(400).send({
+        success: false,
+        message: "Please add your phone number and address to your profile before checkout",
       });
     }
     if (paymentMethod === "razorpay" && !razorpayConfigured()) {

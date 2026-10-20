@@ -47,8 +47,8 @@ const Users = () => {
                     <tr key={u._id}>
                       <td>{u.name}</td>
                       <td>{u.email}</td>
-                      <td>{u.phone}</td>
-                      <td>{u.address}</td>
+                      <td>{u.phone || "—"}</td>
+                      <td>{u.address || "—"}</td>
                       <td>{u.role === 1 ? "Admin" : "Customer"}</td>
                       <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                     </tr>
