@@ -7,7 +7,11 @@ const AuthContext = createContext();
 const signedOut = { user: null, token: "" };
 
 // These return 401 for bad credentials, which doesn't mean the session expired.
-const CREDENTIAL_ROUTES = ["/api/v1/auth/login", "/api/v1/auth/forgot-password"];
+const CREDENTIAL_ROUTES = [
+  "/api/v1/auth/login",
+  "/api/v1/auth/google",
+  "/api/v1/auth/forgot-password",
+];
 
 // True when the JWT's exp claim is in the past (or the token is unreadable).
 const isExpired = (token) => {

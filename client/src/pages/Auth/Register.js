@@ -4,6 +4,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import "../../styles/AuthStyles.css";
+import GoogleSignIn from "../../components/Form/GoogleSignIn";
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -112,6 +113,7 @@ const Register = () => {
           <button type="submit" className="btn btn-primary">
             REGISTER
           </button>
+          <GoogleSignIn text="signup_with" />
         </form>
       </div>
     </Layout>
