@@ -11,6 +11,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import alertRoutes from "./routes/alertRoutes.js";
+import assistantRoutes from "./routes/assistantRoutes.js";
 import { releaseExpiredPayments } from "./controllers/orderController.js";
 import { processAlertQueue } from "./helpers/productAlerts.js";
 import cors from "cors";
@@ -61,6 +62,7 @@ app.use("/api/v1/review", reviewRoutes);
 app.use("/api/v1/wishlist", wishlistRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/alerts", alertRoutes);
+app.use("/api/v1/assistant", assistantRoutes);
 
 //rest api
 app.get("/", (req, res) => {

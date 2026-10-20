@@ -25,6 +25,21 @@ export const requireSignIn = async (req, res, next) => {
   }
 };
 
+// For routes open to everyone that treat signed-in users differently (e.g.
+// rate limits per account): sets req.user when a valid token is sent, and
+// otherwise carries on without one.
+export const optionalSignIn = (req, res, next) => {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  if (token && process.env.JWT_SECRET) {
+    try {
+      req.user = JWT.verify(token, process.env.JWT_SECRET);
+    } catch {
+      // An expired or bad token just means "not signed in" here.
+    }
+  }
+  next();
+};
+
 //admin acceess
 export const isAdmin = async (req, res, next) => {
   try {

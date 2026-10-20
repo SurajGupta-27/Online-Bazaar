@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 const tooManyAttempts = {
   success: false,
@@ -55,4 +55,36 @@ export const forgotPasswordLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: tooManyAttempts,
+});
+
+// Shopping assistant: per signed-in account, else per IP. Every message can
+// use the AI's free quota, so there's a short-term and a daily limit
+// (ASSISTANT_LIMIT_PER_MINUTE, default 8; ASSISTANT_LIMIT_PER_DAY, default 150).
+// Read on each request, since .env loads after this module.
+const assistantKey = (req) => (req.user?._id ? `user:${req.user._id}` : `ip:${ipKeyGenerator(req.ip)}`);
+const assistantSetting = (name, fallback) => () => Number(process.env[name]) || fallback;
+const slowDown = {
+  success: false,
+  message: "You're sending messages too quickly. Please wait a moment and try again.",
+};
+
+export const assistantLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: assistantSetting("ASSISTANT_LIMIT_PER_MINUTE", 8),
+  keyGenerator: assistantKey,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: slowDown,
+});
+
+export const assistantDailyLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  limit: assistantSetting("ASSISTANT_LIMIT_PER_DAY", 150),
+  keyGenerator: assistantKey,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "You've reached today's limit for the assistant. Please try again tomorrow.",
+  },
 });
