@@ -44,6 +44,9 @@ const PRICEY = words("expensive premium luxury luxurious costly pricier priciest
 const BEST = words("best top rated highest popular recommended accha achha acha achchha acche ache badhiya badiya बढ़िया अच्छा अच्छे अच्छी बेस्ट");
 const MORE = words("more other others another else different aur dusre dusra doosre और दूसरे दूसरा");
 
+// A gift request is a new question, never a refinement of the last search.
+const GIFT = words("gift gifts gifting present presents tohfa tohfe uphaar उपहार तोहफा तोहफ़ा गिफ्ट");
+
 const MEN = words("dad daddy father papa pappa pitaji husband brother bro bhai bhaiya boyfriend son beta grandfather grandpa dada nana him men man mens male boys boy gents uncle chacha mama पापा पिता पति भाई बेटा आदमी पुरुष");
 const WOMEN = words("mom mommy mother maa mummy mumma mata wife sister sis behen bahan didi girlfriend daughter beti grandmother grandma dadi nani her women woman womens female girls girl ladies lady aunt chachi mami माँ मां मम्मी पत्नी बहन बेटी महिला लड़की");
 
@@ -146,6 +149,7 @@ export const parseQuery = (message, categories = []) => {
     terms: [],
     categoryIds: [],
     followUp: null,
+    gift: false,
     language: detectLanguage(message),
   };
 
@@ -215,6 +219,7 @@ export const parseQuery = (message, categories = []) => {
   else if (result.followUp === "pricier" || has(PRICEY)) result.sort = "price_desc";
   else if (has(BEST) || result.minRating) result.sort = "rating";
 
+  result.gift = has(GIFT);
   if (has(MEN) && !has(WOMEN)) result.gender = "men";
   else if (has(WOMEN) && !has(MEN)) result.gender = "women";
 
@@ -251,18 +256,19 @@ export const categoryGender = (name) => {
 const fits = (word, s) => s.length >= 3 && word.length >= 3 && (word.startsWith(s) || s.startsWith(word));
 
 // Categories whose name fits a product word. "Accessories" categories only
-// match when the shopper asks for accessories, so "phone" means phones, not
-// phone cases.
+// match when the shopper asks for accessories or no other category fits, so
+// "phone" means phones, not phone cases, but "kitchen" still finds "Kitchen
+// Accessories".
+export const isAccessoryCategory = (name) => categoryWords(name).some((w) => w.startsWith("accessor"));
 export const matchCategories = (categories, terms) => {
   const stems = terms.flat();
   const wantsAccessories = stems.some((s) => s.startsWith("accessor"));
-  return categories
-    .filter((category) => {
-      const ws = categoryWords(category.name).filter((w) => !GENDER_WORDS.men.has(w) && !GENDER_WORDS.women.has(w));
-      if (!wantsAccessories && ws.some((w) => w.startsWith("accessor"))) return false;
-      return ws.some((w) => stems.some((s) => fits(w, s)));
-    })
-    .map((category) => String(category._id));
+  const matched = categories.filter((category) => {
+    const ws = categoryWords(category.name).filter((w) => !GENDER_WORDS.men.has(w) && !GENDER_WORDS.women.has(w));
+    return ws.some((w) => stems.some((s) => fits(w, s)));
+  });
+  const kept = wantsAccessories ? matched : matched.filter((category) => !isAccessoryCategory(category.name));
+  return (kept.length ? kept : matched).map((category) => String(category._id));
 };
 
 // Filters carried between turns (sent back by the browser, so checked again
@@ -295,10 +301,18 @@ export const sanitizeFilters = (filters) => {
 
 // The filters for this turn. A message without product words ("show cheaper
 // ones", "under 1000", "best rated?") refines the previous search; one with
-// product words starts a new search. `shownPrices` are the current prices of
-// the products shown last time (read from the database, not the browser).
+// product words starts a new search, and so does a gift request or a new
+// recipient ("gift for my mom", "something for dad" after a search for men's
+// shoes), unless it's a follow-up cue ("cheaper gifts"). `shownPrices` are the
+// current prices of the products shown last time (read from the database, not
+// the browser).
 export const resolveFilters = (parsed, previous, shownPrices = []) => {
-  const refine = Boolean(previous) && parsed.terms.length === 0 && parsed.categoryIds.length === 0;
+  const newSubject = parsed.gift || Boolean(parsed.gender && parsed.gender !== previous?.gender);
+  const refine =
+    Boolean(previous) &&
+    parsed.terms.length === 0 &&
+    parsed.categoryIds.length === 0 &&
+    (Boolean(parsed.followUp) || !newSubject);
   const base = refine
     ? { ...previous }
     : { minPrice: null, maxPrice: null, belowPrice: null, abovePrice: null, minRating: null, sort: "relevance", gender: null, terms: parsed.terms, categoryIds: parsed.categoryIds };

@@ -1,9 +1,10 @@
 // Finds the in-stock products that fit the shopping assistant's filters
 // (helpers/shoppingQuery.js) and ranks them. These are the only products the
 // assistant can ever show: the AI only picks from them.
+import categoryModel from "../models/categoryModel.js";
 import productModel from "../models/productModel.js";
 import { escapeRegex } from "./escapeRegex.js";
-import { categoryGender } from "./shoppingQuery.js";
+import { categoryGender, isAccessoryCategory } from "./shoppingQuery.js";
 
 const FIELDS = "name slug description price quantity category images ratingAverage ratingCount";
 const SCAN_LIMIT = 300;
@@ -84,6 +85,24 @@ const closestMatches = (products, dropAccessories) => {
   return keepIf(kept, (p) => !p.otherGender);
 };
 
+// Up to `limit` products, taking each category's best in turn, so a request
+// without product words ("gift for my mom") offers a mix of categories rather
+// than whichever few were added last.
+const acrossCategories = (products, limit) => {
+  const groups = new Map();
+  for (const p of products) {
+    const key = String(p.category?._id);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(p);
+  }
+  const lists = [...groups.values()];
+  const picked = [];
+  for (let i = 0; picked.length < limit && picked.length < products.length; i++) {
+    for (const list of lists) if (i < list.length && picked.length < limit) picked.push(list[i]);
+  }
+  return picked;
+};
+
 // Returns { products, relaxed } with each product's `score` and `matched`
 // words. When nothing fits and `relax` is true:
 //   relaxed "price"  products that match the words, at the prices closest to
@@ -119,7 +138,12 @@ export const findCandidates = async (filters, { exclude = [], limit = 30, relax 
   let order = ORDER[filters.sort] || ORDER.relevance;
   if (or.length) {
     const wantsAccessories = filters.terms.flat().some((s) => ACCESSORY_WORDS.test(s));
-    const dropAccessories = !wantsAccessories && categoryIds.size > 0;
+    // Only when the words fit a real (non-accessories) category: "kitchen"
+    // matches only "Kitchen Accessories", and those are what to show.
+    const matchedCategories = categoryIds.size
+      ? await categoryModel.find({ _id: { $in: [...categoryIds] } }).select("name").lean()
+      : [];
+    const dropAccessories = !wantsAccessories && matchedCategories.some((c) => !isAccessoryCategory(c.name));
     const matching = async (query) =>
       closestMatches(await run({ ...query, $or: or }, MONGO_SORT.relevance), dropAccessories);
     products = await matching(base);
@@ -137,6 +161,7 @@ export const findCandidates = async (filters, { exclude = [], limit = 30, relax 
   if (!or.length || relaxed === "words") {
     products = await run(base, MONGO_SORT[filters.sort] || MONGO_SORT.relevance);
     products = keepIf(products, (p) => !p.otherGender);
+    if (filters.sort === "relevance") products = acrossCategories(products.sort(order), limit);
   }
 
   products.sort(order);
