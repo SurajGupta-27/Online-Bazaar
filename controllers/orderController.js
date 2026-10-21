@@ -209,7 +209,7 @@ export const createOrderController = async (req, res) => {
         notes: { orderId: String(order._id) },
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await releaseOrder({ _id: order._id, ...unpaidOnline }, cancelUnpaid());
       return res.status(502).send({
         success: false,
@@ -235,7 +235,7 @@ export const createOrderController = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({
       success: false,
       message: "Unable to place order",
@@ -294,7 +294,7 @@ export const verifyPaymentController = async (req, res) => {
       order: late || current,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({ success: false, message: "Unable to verify payment" });
   }
 };
@@ -313,7 +313,7 @@ export const cancelPaymentController = async (req, res) => {
     }
     return res.status(200).send({ success: true, message: "Payment cancelled", order });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({ success: false, message: "Unable to cancel payment" });
   }
 };
@@ -326,7 +326,7 @@ export const getMyOrdersController = async (req, res) => {
       .sort({ createdAt: -1 });
     return res.status(200).send({ success: true, orders: orders.map(withTracking) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({
       success: false,
       message: "Unable to load orders",
@@ -349,7 +349,7 @@ export const getMyOrderController = async (req, res) => {
     }
     return res.status(200).send({ success: true, order: withTracking(order) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({ success: false, message: "Unable to load the order" });
   }
 };
@@ -363,7 +363,7 @@ export const getAllOrdersController = async (req, res) => {
       .sort({ createdAt: -1 });
     return res.status(200).send({ success: true, orders: orders.map(withTracking) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({
       success: false,
       message: "Unable to load orders",
@@ -474,7 +474,7 @@ export const updateOrderStatusController = async (req, res) => {
     notifyOrderStatus(id, status);
     return respond("Order status updated");
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({
       success: false,
       message: "Unable to update order status",
@@ -514,7 +514,7 @@ export const markOrderPaidController = async (req, res) => {
         : "Mark the order as delivered first";
     return res.status(409).send({ success: false, message });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({ success: false, message: "Unable to mark order as paid" });
   }
 };
@@ -548,7 +548,7 @@ export const downloadInvoiceController = async (req, res) => {
     });
     return res.status(200).send(pdf);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).send({ success: false, message: "Unable to create the invoice" });
   }
 };

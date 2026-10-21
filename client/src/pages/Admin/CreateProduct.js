@@ -28,7 +28,6 @@ const CreateProduct = () => {
         setCategories(data?.category);
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to load categories"));
     }
   };
@@ -60,7 +59,6 @@ const CreateProduct = () => {
         navigate("/dashboard/admin/products");
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to create product"));
     }
   };

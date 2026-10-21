@@ -32,7 +32,7 @@ const ProductDetails = () => {
           setRelatedProducts(related.data?.products || []);
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
       }
     };
     load();

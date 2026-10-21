@@ -3,6 +3,7 @@ export const BRAND = {
   name: "Online Bazaar",
   owner: "Suraj Gupta",
   tagline: "Everything you need, delivered to your door",
+  supportEmail: "support@onlinebazaar.in",
 };
 
 // "Login" -> "Login | Online Bazaar"; the home page uses the brand alone.

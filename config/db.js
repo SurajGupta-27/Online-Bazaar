@@ -10,7 +10,7 @@ const connectDB = async () => {
     }
     const conn = await mongoose.connect(process.env.MONGO_URL);
     console.log(
-      `Conneted To Mongodb Databse ${conn.connection.host}`.bgMagenta.white
+      `Connected to MongoDB database ${conn.connection.host}`.bgMagenta.white
     );
     return true;
   } catch (error) {

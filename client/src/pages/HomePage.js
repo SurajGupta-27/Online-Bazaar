@@ -42,7 +42,7 @@ const HomePage = () => {
         setCategories(data?.category);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 
@@ -57,7 +57,7 @@ const HomePage = () => {
       const { data } = await axios.get("/api/v1/product/product-count");
       setTotal(data?.total);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 
@@ -80,7 +80,6 @@ const HomePage = () => {
         setPage(1);
       } catch (error) {
         if (version !== requestVersion.current) return;
-        console.log(error);
         setError(
           error.response?.data?.message ||
             "Products are unavailable. Check the database connection."
@@ -103,7 +102,7 @@ const HomePage = () => {
       setProducts((current) => [...current, ...(data?.products || [])]);
       setPage(nextPage);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }

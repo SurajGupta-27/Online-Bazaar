@@ -27,7 +27,7 @@ const WishlistProvider = ({ children }) => {
     axios
       .get("/api/v1/wishlist")
       .then(({ data }) => current && setWishlist(data?.items || []))
-      .catch((error) => console.log(error));
+      .catch((error) => console.error(error));
     return () => {
       current = false;
     };

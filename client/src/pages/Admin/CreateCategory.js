@@ -26,7 +26,6 @@ const CreateCategory = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to create category"));
     }
   };
@@ -39,7 +38,6 @@ const CreateCategory = () => {
         setCategories(data?.category);
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to load categories"));
     }
   };

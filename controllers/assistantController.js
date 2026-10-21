@@ -85,7 +85,7 @@ export const assistantChatController = async (req, res) => {
       context: { filters, productIds: products.map((p) => String(p._id)) },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "The assistant couldn't answer right now." });
   }
 };

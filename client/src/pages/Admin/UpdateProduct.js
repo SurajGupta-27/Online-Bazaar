@@ -40,7 +40,7 @@ const UpdateProduct = () => {
       // Products whose category was deleted have none; the admin must pick one.
       setCategory(data.product.category?._id || undefined);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
   useEffect(() => {
@@ -55,7 +55,6 @@ const UpdateProduct = () => {
         setCategories(data?.category);
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to load categories"));
     }
   };
@@ -87,7 +86,6 @@ const UpdateProduct = () => {
         navigate("/dashboard/admin/products");
       }
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to update product"));
     }
   };
@@ -100,10 +98,9 @@ const UpdateProduct = () => {
       await axios.delete(
         `/api/v1/product/delete-product/${id}`
       );
-      toast.success("Product DEleted Succfully");
+      toast.success("Product Deleted Successfully");
       navigate("/dashboard/admin/products");
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Unable to delete product"));
     }
   };

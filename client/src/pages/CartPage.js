@@ -26,25 +26,13 @@ const CartPage = () => {
   const profileComplete = Boolean(auth?.user?.phone && auth?.user?.address);
 
   //total price
-  const totalPrice = () => {
-    try {
-      const total = cart?.reduce(
+  const totalPrice = () =>
+    formatPrice(
+      (cart || []).reduce(
         (sum, item) => sum + Number(item.price || 0) * cartQuantity(item),
         0
-      );
-      return formatPrice(total);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  //detele item
-  const removeCartItem = (pid) => {
-    try {
-      removeFromCart(pid);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+      )
+    );
 
   const finishOrder = (message) => {
     setCart([]);
@@ -192,7 +180,7 @@ const CartPage = () => {
                   </div>
                   <button
                     className="btn btn-danger"
-                    onClick={() => removeCartItem(p._id)}
+                    onClick={() => removeFromCart(p._id)}
                   >
                     Remove
                   </button>

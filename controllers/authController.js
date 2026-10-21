@@ -106,7 +106,7 @@ export const registerController = async (req, res) => {
       user: publicUser(user),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error in registration",
@@ -148,7 +148,7 @@ export const loginController = async (req, res) => {
       token,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error in login",
@@ -229,7 +229,7 @@ export const googleLoginController = async (req, res) => {
       token: signToken(user),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error in Google sign-in",
@@ -283,7 +283,7 @@ export const forgotPasswordController = async (req, res) => {
       message: "Password Reset Successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Something went wrong while resetting the password",
@@ -296,7 +296,7 @@ export const testController = (req, res) => {
   try {
     res.send("Protected Routes");
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Something went wrong" });
   }
 };
@@ -333,7 +333,7 @@ export const updateProfileController = async (req, res) => {
       updatedUser: publicUser(user),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(400).send({
       success: false,
       message: "Error while updating profile",
@@ -358,7 +358,7 @@ export const getAllUsersController = async (req, res) => {
       }),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Unable to load users",

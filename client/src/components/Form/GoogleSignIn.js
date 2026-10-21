@@ -29,7 +29,6 @@ const GoogleSignIn = ({ redirectTo = "/", text = "continue_with" }) => {
       }
       navigate(redirectTo);
     } catch (error) {
-      console.log(error);
       toast.error(errorMessage(error, "Google sign-in failed. Please try again."));
     }
   };

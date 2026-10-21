@@ -17,7 +17,7 @@ export const getPreferencesController = async (req, res) => {
     if (!user) return res.status(404).send({ success: false, message: "User not found" });
     res.status(200).send({ success: true, alerts: alertPreferences(user) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load your alert settings" });
   }
 };
@@ -43,7 +43,7 @@ export const updatePreferencesController = async (req, res) => {
     if (!user) return res.status(404).send({ success: false, message: "User not found" });
     res.status(200).send({ success: true, message: "Alert settings saved", alerts: alertPreferences(user) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to save your alert settings" });
   }
 };
@@ -54,7 +54,7 @@ export const getRestockRequestsController = async (req, res) => {
     const requests = await restockRequestModel.find({ user: req.user._id }).select("product");
     res.status(200).send({ success: true, products: requests.map((r) => r.product) });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load your alerts" });
   }
 };
@@ -90,7 +90,7 @@ export const addRestockRequestController = async (req, res) => {
     }
     res.status(201).send({ success: true, message: "We'll email you when it's back" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to set up the alert" });
   }
 };
@@ -104,7 +104,7 @@ export const removeRestockRequestController = async (req, res) => {
     }
     res.status(200).send({ success: true, message: "Alert cancelled" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to cancel the alert" });
   }
 };
@@ -134,7 +134,7 @@ const setFromLink = (subscribed) => async (req, res) => {
       message: subscribed ? `You'll get ${label} again` : `You won't get ${label} any more`,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Something went wrong" });
   }
 };

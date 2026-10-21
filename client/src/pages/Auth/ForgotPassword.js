@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import "../../styles/AuthStyles.css";
 
-const ForgotPasssword = () => {
+const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [answer, setAnswer] = useState("");
@@ -29,7 +29,6 @@ const ForgotPasssword = () => {
         toast.error(res.data.message);
       }
     } catch (error) {
-      console.log(error);
       toast.error(
         error.response?.data?.message || "Something went wrong while resetting the password"
       );
@@ -85,4 +84,4 @@ const ForgotPasssword = () => {
   );
 };
 
-export default ForgotPasssword;
+export default ForgotPassword;

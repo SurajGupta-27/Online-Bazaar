@@ -28,7 +28,7 @@ const CategoryProduct = () => {
       setTotal(data?.total || 0);
       setPage(pageToLoad);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     } finally {
       if (slug === currentSlug.current) setLoading(false);
     }

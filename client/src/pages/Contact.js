@@ -1,6 +1,6 @@
 import React from "react";
 import Layout from "../components/Layout/Layout";
-import { BiMailSend, BiPhoneCall, BiSupport } from "react-icons/bi";
+import { BiMailSend, BiTime } from "react-icons/bi";
 import { BRAND } from "../brand";
 
 const Contact = () => {
@@ -15,13 +15,11 @@ const Contact = () => {
             happy to help.
           </p>
           <p className="contact-line">
-            <BiMailSend aria-hidden="true" /> support@onlinebazaar.example
+            <BiMailSend aria-hidden="true" />{" "}
+            <a href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a>
           </p>
           <p className="contact-line">
-            <BiPhoneCall aria-hidden="true" /> 012-3456789
-          </p>
-          <p className="contact-line">
-            <BiSupport aria-hidden="true" /> 1800-0000-0000 (toll free)
+            <BiTime aria-hidden="true" /> We usually reply within one working day.
           </p>
         </div>
       </div>

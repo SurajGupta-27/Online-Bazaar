@@ -25,10 +25,10 @@ export const createCategoryController = async (req, res) => {
       category,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
-      message: "Errro in Category",
+      message: "Error in category",
     });
   }
 };
@@ -65,7 +65,7 @@ export const updateCategoryController = async (req, res) => {
       category,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error while updating category",
@@ -83,7 +83,7 @@ export const categoryControlller = async (req, res) => {
       category,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error while getting all categories",
@@ -97,11 +97,11 @@ export const singleCategoryController = async (req, res) => {
     const category = await categoryModel.findOne({ slug: req.params.slug });
     res.status(200).send({
       success: true,
-      message: "Get SIngle Category SUccessfully",
+      message: "Category fetched",
       category,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error While getting Single Category",
@@ -133,7 +133,7 @@ export const deleteCategoryCOntroller = async (req, res) => {
       message: "Category Deleted Successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "error while deleting category",

@@ -1,7 +1,7 @@
 {
-  "name": "e-commerce-web",
+  "name": "online-bazaar",
   "version": "1.0.0",
-  "description": "Making a user friendly ecommerce web application",
+  "description": "Online Bazaar: a MERN e-commerce store with an AI shopping assistant, order tracking, price-drop alerts, reviews and Razorpay payments",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -17,19 +17,26 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Suraj-harry/E-commerce-Web.git"
+    "url": "git+https://github.com/SurajGupta-27/E-commerce-Web.git"
   },
-  "keywords": [],
+  "keywords": [
+    "mern",
+    "ecommerce",
+    "react",
+    "express",
+    "mongodb",
+    "razorpay",
+    "gemini"
+  ],
   "author": "Suraj Gupta",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Suraj-harry/E-commerce-Web/issues"
+    "url": "https://github.com/SurajGupta-27/E-commerce-Web/issues"
   },
-  "homepage": "https://github.com/Suraj-harry/E-commerce-Web#readme",
+  "homepage": "https://github.com/SurajGupta-27/E-commerce-Web#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "colors": "^1.4.0",
-    "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -41,12 +48,12 @@
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
     "nodemailer": "^10.1.7",
-    "nodemon": "^3.1.11",
     "pdfkit": "^0.20.2",
-    "react-icons": "^5.5.0",
     "slugify": "^1.6.6"
   },
   "devDependencies": {
-    "mongodb-memory-server": "^11.3.0"
+    "concurrently": "^9.2.5",
+    "mongodb-memory-server": "^11.3.0",
+    "nodemon": "^3.1.14"
   }
 }

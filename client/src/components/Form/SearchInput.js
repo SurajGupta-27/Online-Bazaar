@@ -17,7 +17,7 @@ const SearchInput = () => {
       setValues({ ...values, results: data });
       navigate("/search");
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
   return (

@@ -132,7 +132,7 @@ const Reviews = ({ productId, onSummary }) => {
       setPages(data.pages || 1);
       onSummary?.(data.summary || emptySummary);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }, [productId, onSummary]);
 
@@ -142,7 +142,7 @@ const Reviews = ({ productId, onSummary }) => {
       const { data } = await axios.get(`/api/v1/review/product/${productId}/mine`);
       setMine({ canReview: Boolean(data.canReview), review: data.review || null });
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }, [productId, signedIn]);
 
@@ -161,7 +161,7 @@ const Reviews = ({ productId, onSummary }) => {
       setPage(page + 1);
       setPages(data.pages || pages);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 

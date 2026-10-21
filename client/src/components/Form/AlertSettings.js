@@ -45,7 +45,7 @@ const AlertSettings = () => {
     axios
       .get("/api/v1/alerts/preferences")
       .then(({ data }) => current && data?.alerts && store(data.alerts))
-      .catch((error) => console.log(error));
+      .catch((error) => console.error(error));
     return () => {
       current = false;
     };

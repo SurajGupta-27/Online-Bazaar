@@ -21,7 +21,7 @@ import mongoose from "mongoose";
 //configure env
 dotenv.config();
 
-//databse config
+//database config
 connectDB();
 
 //rest object
@@ -37,7 +37,7 @@ const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:3000")
   .split(",")
   .map((origin) => origin.trim());
 
-//middelwares
+//middlewares
 app.use(helmet());
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
@@ -75,7 +75,7 @@ app.get("/api/health", (req, res) => {
 
 // Last-resort error handler: log details, never send them to the client.
 app.use((err, req, res, next) => {
-  console.log(err);
+  console.error(err);
   const status = err.status || err.statusCode || 500;
   const clientError = status >= 400 && status < 500;
   res.status(clientError ? status : 500).send({
@@ -91,7 +91,7 @@ const PORT = process.env.PORT || 8080;
 const sweepSeconds = Number(process.env.PAYMENT_SWEEP_SECONDS) || 60;
 setInterval(() => {
   if (mongoose.connection.readyState !== 1) return;
-  releaseExpiredPayments().catch((error) => console.log(error));
+  releaseExpiredPayments().catch((error) => console.error(error));
 }, sweepSeconds * 1000).unref();
 
 // Send price-drop and back-in-stock alerts that had to wait (retries, the

@@ -30,7 +30,7 @@ export const getWishlistController = async (req, res) => {
         })),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load your wishlist" });
   }
 };
@@ -63,7 +63,7 @@ export const addToWishlistController = async (req, res) => {
     }
     res.status(201).send({ success: true, message: "Added to your wishlist" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to update your wishlist" });
   }
 };
@@ -77,7 +77,7 @@ export const removeFromWishlistController = async (req, res) => {
     }
     res.status(200).send({ success: true, message: "Removed from your wishlist" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to update your wishlist" });
   }
 };

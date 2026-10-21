@@ -60,7 +60,7 @@ export const isAdmin = async (req, res, next) => {
       next();
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({
       success: false,
       message: "Error in admin middelware",

@@ -32,7 +32,7 @@ const AlertsProvider = ({ children }) => {
     axios
       .get("/api/v1/alerts/restock")
       .then(({ data }) => current && setRestock(data?.products || []))
-      .catch((error) => console.log(error));
+      .catch((error) => console.error(error));
     return () => {
       current = false;
     };

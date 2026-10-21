@@ -100,7 +100,7 @@ export const getProductReviewsController = async (req, res) => {
       pages: Math.max(1, Math.ceil(summary.count / PER_PAGE)),
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load reviews" });
   }
 };
@@ -122,7 +122,7 @@ export const getMyReviewController = async (req, res) => {
       review: review ? publicReview(review) : null,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load your review" });
   }
 };
@@ -174,7 +174,7 @@ export const createReviewController = async (req, res) => {
       summary,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to save your review" });
   }
 };
@@ -208,7 +208,7 @@ export const updateReviewController = async (req, res) => {
       summary,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to update your review" });
   }
 };
@@ -228,7 +228,7 @@ export const deleteReviewController = async (req, res) => {
     const summary = await refreshProductRating(review.product);
     res.status(200).send({ success: true, message: "Review deleted", summary });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to delete the review" });
   }
 };
@@ -261,7 +261,7 @@ export const getAllReviewsController = async (req, res) => {
       total,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send({ success: false, message: "Unable to load reviews" });
   }
 };

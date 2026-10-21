@@ -1,2 +1,16 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Secrets: every .env file except the committed examples
 .env
+.env.*
+!.env.example
+
+# Build output and test coverage
+client/build/
+coverage/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

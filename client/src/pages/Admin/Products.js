@@ -22,7 +22,7 @@ const Products = () => {
         const { data } = await axios.get("/api/v1/product/product-count");
         setTotal(data?.total || 0);
       } catch (error) {
-        console.log(error);
+        console.error(error);
       }
     };
     getTotal();
@@ -37,7 +37,6 @@ const Products = () => {
         );
         setProducts(data?.products || []);
       } catch (error) {
-        console.log(error);
         toast.error(errorMessage(error, "Unable to load products"));
       }
     };
