@@ -64,6 +64,16 @@ export async function withServer(fn, { port = 8099, env = {} } = {}) {
       EMAIL_USER: "",
       EMAIL_APP_PASSWORD: "",
       EMAIL_OUTBOX: "",
+      EMAIL_PROVIDER: "",
+      EMAIL_FROM: "",
+      BREVO_API_KEY: "",
+      BREVO_API_URL: "http://127.0.0.1:9/v3",
+      // Production settings: the default proxy trust and no React build
+      // (tests/deployment.test.mjs passes its own).
+      TRUST_PROXY: "",
+      SERVE_CLIENT: "false",
+      CLIENT_BUILD_DIR: "",
+      NODE_ENV: "test",
       // And the AI: the shopping assistant uses smart search only. Tests of
       // the AI start tests/mockAi.mjs and pass aiEnv(mock, provider).
       AI_PROVIDER: "",

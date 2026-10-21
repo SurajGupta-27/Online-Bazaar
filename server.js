@@ -17,6 +17,10 @@ import { processAlertQueue } from "./helpers/productAlerts.js";
 import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { clientOrigins } from "./helpers/clientUrl.js";
 
 //configure env
 dotenv.config();
@@ -27,18 +31,50 @@ connectDB();
 //rest object
 const app = express();
 
-// Trust X-Forwarded-For only from a local proxy (the React dev server), so rate
-// limits apply per real client IP. Adjust if deploying behind a remote proxy.
-app.set("trust proxy", "loopback");
+// Which proxies may set X-Forwarded-For, so rate limits apply per real client
+// IP. Default "loopback" (the React dev server's proxy). Behind a host's load
+// balancers (Render), TRUST_PROXY is the number of proxy hops in front of the
+// app; GET /api/health shows the IP the server sees, to check it.
+const trustProxy = (value = "") => {
+  const setting = value.trim();
+  if (!setting) return "loopback";
+  if (/^\d+$/.test(setting)) return Number(setting);
+  if (setting === "true" || setting === "false") return setting === "true";
+  return setting;
+};
+app.set("trust proxy", trustProxy(process.env.TRUST_PROXY));
 
 // Only the frontend origin(s) may call the API from a browser.
-// CLIENT_URL can be a comma-separated list; defaults to the React dev server.
-const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:3000")
-  .split(",")
-  .map((origin) => origin.trim());
+const allowedOrigins = clientOrigins();
+
+// The React build, when it exists (npm run build), is served by this server
+// so the store and the API share one origin. SERVE_CLIENT=false turns it off;
+// CLIENT_BUILD_DIR (tests) points it at another folder.
+const clientBuild =
+  process.env.CLIENT_BUILD_DIR || fileURLToPath(new URL("./client/build", import.meta.url));
+const serveClient =
+  process.env.SERVE_CLIENT !== "false" && existsSync(join(clientBuild, "index.html"));
 
 //middlewares
-app.use(helmet());
+app.use(
+  helmet({
+    // The store loads Bootstrap from jsDelivr, Google Sign-In and Razorpay
+    // Checkout; product images come from Cloudinary (any https image).
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "https://accounts.google.com/gsi/client", "https://checkout.razorpay.com"],
+        connectSrc: ["'self'", "https://accounts.google.com/gsi/", "https://*.razorpay.com"],
+        frameSrc: ["https://accounts.google.com/gsi/", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        formAction: ["'self'", "https://*.razorpay.com"],
+        // Only over https; on http://localhost it would break the page.
+        upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
+      },
+    },
+    // Google Sign-In's popup needs to talk back to the page.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  })
+);
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.use(morgan("dev"));
@@ -64,14 +100,44 @@ app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/alerts", alertRoutes);
 app.use("/api/v1/assistant", assistantRoutes);
 
-//rest api
-app.get("/", (req, res) => {
-  res.send("<h1>Online Bazaar API</h1>");
+// Health check for the host and uptime monitors: 200 whenever the server
+// runs; `database` says whether MongoDB is connected. `clientIp` is the
+// caller's IP as the server sees it, for checking TRUST_PROXY.
+app.get("/api/health", (req, res) => {
+  res.status(200).send({
+    success: true,
+    service: "online-bazaar-api",
+    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    clientIp: req.ip,
+  });
 });
 
-app.get("/api/health", (req, res) => {
-  res.status(200).send({ success: true, service: "online-bazaar-api" });
+// Unknown API paths get JSON, never the React page.
+app.use("/api", (req, res) => {
+  res.status(404).send({ success: false, message: "Not found" });
 });
+
+if (serveClient) {
+  // Hashed files under static/ never change; everything else is revalidated.
+  app.use(
+    express.static(clientBuild, {
+      index: false,
+      setHeaders: (res, path) => {
+        const hashed = path.startsWith(join(clientBuild, "static"));
+        res.set("Cache-Control", hashed ? "public, max-age=31536000, immutable" : "no-cache");
+      },
+    })
+  );
+  // Every other path is a React route.
+  app.get(/.*/, (req, res) => {
+    res.set("Cache-Control", "no-cache");
+    res.sendFile(join(clientBuild, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("<h1>Online Bazaar API</h1>");
+  });
+}
 
 // Last-resort error handler: log details, never send them to the client.
 app.use((err, req, res, next) => {

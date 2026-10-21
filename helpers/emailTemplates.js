@@ -12,6 +12,7 @@ import {
   statusLabel,
 } from "./orderStatus.js";
 import { shortOrderId } from "./invoice.js";
+import { clientOrigins } from "./clientUrl.js";
 
 export const escapeHtml = (value) =>
   String(value ?? "")
@@ -25,8 +26,7 @@ const COLORS = { primary: "#1e3a8a", ink: "#0f172a", muted: "#64748b", border: "
 const FONT = "font-family:'DM Sans',Segoe UI,Helvetica,Arial,sans-serif;";
 
 // The store's address for links in emails: the first CLIENT_URL origin.
-export const storeUrl = (path = "") =>
-  `${(process.env.CLIENT_URL || "http://localhost:3000").split(",")[0].trim().replace(/\/$/, "")}${path}`;
+export const storeUrl = (path = "") => `${clientOrigins()[0]}${path}`;
 
 // The customer's order details page, with the tracking timeline.
 export const orderUrl = (order) => storeUrl(`/dashboard/user/orders/${order._id}`);

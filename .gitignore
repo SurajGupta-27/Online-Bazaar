@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Public build settings (no secrets), see the file
+!client/.env.production
 
 # Build output and test coverage
 client/build/

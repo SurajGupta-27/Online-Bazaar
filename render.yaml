@@ -1,0 +1,62 @@
+# Render Blueprint: one free web service that runs the API and serves the
+# React build (same origin, so no CORS setup and relative /api/v1 URLs work).
+# In Render: New > Blueprint > pick this repository. Values marked
+# `sync: false` are secrets Render asks you for; they never live in git.
+services:
+  - type: web
+    name: online-bazaar
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DEV_MODE
+        value: production
+      # Proxy hops in front of the app; check with GET /api/health (see README).
+      - key: TRUST_PROXY
+        value: "1"
+      # Your live URL, e.g. https://online-bazaar.onrender.com (used for email
+      # links). Without it, Render's own RENDER_EXTERNAL_URL is used.
+      - key: CLIENT_URL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Email: Render's free plan blocks SMTP, so use Brevo's API.
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Brevo's free plan sends 300 a day: leave room for order emails.
+      - key: ALERT_DAILY_LIMIT
+        value: "150"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      # Google Sign-In: both get the same OAuth client ID. The REACT_APP_ one
+      # is built into the page, so change it and redeploy together.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        sync: false
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
