@@ -75,7 +75,17 @@ app.use(
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   })
 );
-app.use(cors({ origin: allowedOrigins }));
+// When the store is hosted apart from the API (Vercel + Render), CLIENT_URL
+// lists its origin(s). maxAge lets browsers reuse the preflight that the
+// Authorization header triggers; the invoice's file name is in
+// Content-Disposition, which cross-origin pages can only read if exposed.
+app.use(cors({ origin: allowedOrigins, maxAge: 600, exposedHeaders: ["Content-Disposition"] }));
+// Product photos are <img> tags on the store's pages, which may be on another
+// origin; Helmet's default (same-origin) would block them there.
+app.use("/api/v1/product/product-photo", (req, res, next) => {
+  res.set("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+});
 app.use(express.json());
 app.use(morgan("dev"));
 

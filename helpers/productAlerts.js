@@ -17,6 +17,7 @@ import userModel from "../models/userModel.js";
 import wishlistModel from "../models/wishlistModel.js";
 import { ALERT_KINDS, alertsOn, unsubscribeToken } from "./alertTokens.js";
 import { backInStockEmail, priceDropEmail, storeUrl } from "./emailTemplates.js";
+import { apiOrigin } from "./clientUrl.js";
 import { emailConfigured, sendInBackground, sendMail } from "./mailer.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -116,7 +117,7 @@ const unsubscribeLinks = (userId, kind) => {
   const params = unsubscribeParams(userId, kind);
   return {
     page: storeUrl(`/unsubscribe?${params}`),
-    oneClick: storeUrl(`/api/v1/alerts/unsubscribe?${params}`),
+    oneClick: `${apiOrigin()}/api/v1/alerts/unsubscribe?${params}`,
   };
 };
 

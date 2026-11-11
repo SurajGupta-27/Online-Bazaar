@@ -86,6 +86,7 @@ await withServer(async ({ api, db, logs }) => {
   check("and a link to manage alerts", annMail?.text.includes("Manage email alerts: http://localhost:3000/dashboard/user/profile"));
   const headers = JSON.stringify(annMail?.headers || {}) + JSON.stringify(annMail?.list || {});
   check("one-click List-Unsubscribe headers", /List-Unsubscribe-Post/i.test(headers) && /api\/v1\/alerts\/unsubscribe\?u=/.test(headers), headers);
+  check("one-click link goes to the API's own address (API_URL), not the store's", headers.includes("https://api.bazaar.test/api/v1/alerts/unsubscribe?u=") && !headers.includes("localhost:3000/api/"), headers);
   check("never mentions other customers", !/bob@x\.com|Bob/.test(annMail?.html + annMail?.text));
   const annItem = await db.collection("wishlistitems").findOne({ product: lamp, priceWhenAdded: 1000, lastAlertedPrice: 850 });
   check("records the alerted price on the wishlist item", Boolean(annItem));
@@ -196,7 +197,7 @@ await withServer(async ({ api, db, logs }) => {
   await api("DELETE", `/api/v1/product/delete-product/${lamp}`, null, { token: admin });
   check("deleting a product deletes its alerts", (await alerts.countDocuments({ product: lamp })) === 0);
   check("no customer emails in the logs", !/ann@x\.com|bob@x\.com/.test(logs().split("\n").filter((l) => /Alert/.test(l)).join("\n")));
-}, { env: { ...emailEnv(outbox), ...fast } });
+}, { env: { ...emailEnv(outbox), ...fast, API_URL: "https://api.bazaar.test" } });
 
 // --- Batches and the daily limit -----------------------------------------------
 outbox.clear();

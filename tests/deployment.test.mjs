@@ -97,6 +97,31 @@ try {
     { env: { TRUST_PROXY: "2", SERVE_CLIENT: "", CLIENT_BUILD_DIR: build, NODE_ENV: "production" } }
   );
 
+  // --- Store hosted apart from the API (Vercel + Render) ---------------------
+  await withServer(
+    async ({ api, db }) => {
+      const store = "https://bazaar.vercel.app";
+      const preflight = await api("OPTIONS", "/api/v1/order/orders", undefined, {
+        headers: { Origin: store, "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "authorization" },
+      });
+      check("preflight from the store's origin is allowed", preflight.status === 204 && preflight.headers.get("access-control-allow-origin") === store, `${preflight.status} ${preflight.headers.get("access-control-allow-origin")}`);
+      check("preflight allows the Authorization header", /authorization/i.test(preflight.headers.get("access-control-allow-headers") || ""));
+      check("preflight is cached by the browser", preflight.headers.get("access-control-max-age") === "600");
+      const get = await api("GET", "/api/v1/category/get-category", undefined, { headers: { Origin: store } });
+      check("API answers carry the store's origin", get.headers.get("access-control-allow-origin") === store);
+      check("Content-Disposition is readable cross-origin (invoice file names)", /content-disposition/i.test(get.headers.get("access-control-expose-headers") || ""));
+      const other = await api("GET", "/api/v1/category/get-category", undefined, { headers: { Origin: "https://evil.example" } });
+      check("other origins get no CORS permission", !other.headers.get("access-control-allow-origin"));
+      check("second CLIENT_URL entry (e.g. a preview URL) is allowed too", (await api("GET", "/api/v1/category/get-category", undefined, { headers: { Origin: "https://preview.vercel.app" } })).headers.get("access-control-allow-origin") === "https://preview.vercel.app");
+
+      const { insertedId } = await db.collection("products").insertOne({ name: "P", slug: "p", description: "d", price: 1, quantity: 1, category: new ObjectId(), images: [{ url: "https://res.cloudinary.com/x/image/upload/v1/p.png", publicId: "p" }] });
+      const photo = await api("GET", `/api/v1/product/product-photo/${insertedId}`, undefined, { redirect: "manual" });
+      check("product photos may be shown on another origin's page", photo.headers.get("cross-origin-resource-policy") === "cross-origin", photo.headers.get("cross-origin-resource-policy"));
+      check("other API answers stay same-origin for no-cors loads", get.headers.get("cross-origin-resource-policy") === "same-origin");
+    },
+    { env: { CLIENT_URL: "https://bazaar.vercel.app, https://preview.vercel.app/" } }
+  );
+
   // --- Defaults: no build, so / is the API's page ---------------------------
   await withServer(async ({ api }) => {
     check("without a build, / is the API's page", /Online Bazaar API/.test((await api("GET", "/")).text));

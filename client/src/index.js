@@ -10,6 +10,11 @@ import {CartProvider} from "./context/cart"
 import { WishlistProvider } from "./context/wishlist";
 import { AlertsProvider } from "./context/alerts";
 import "antd/dist/reset.css";
+import axios from "axios";
+import { API_BASE } from "./utils/apiUrl";
+
+// API on another origin (e.g. Vercel + Render): send every /api/v1 call there.
+if (API_BASE) axios.defaults.baseURL = API_BASE;
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

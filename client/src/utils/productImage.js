@@ -1,8 +1,10 @@
 // Product images live on Cloudinary (product.images, first = main). Products
 // not yet migrated, and cart items saved before images existed, fall back to
 // the API's photo endpoint, which also redirects to the main image.
+import { apiUrl } from "./apiUrl";
+
 const legacyPhoto = (product) =>
-  product?._id ? `/api/v1/product/product-photo/${product._id}` : "";
+  product?._id ? apiUrl(`/api/v1/product/product-photo/${product._id}`) : "";
 
 // Asks Cloudinary for a resized, best-format copy (WebP/AVIF where the browser
 // supports it) instead of the full original, to save bandwidth.

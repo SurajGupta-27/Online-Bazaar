@@ -7,6 +7,7 @@ import { errorMessage } from "../../utils/errorMessage";
 import { Select } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import ImagePicker, { appendImages, itemsFromImages } from "../../components/Form/ImagePicker";
+import { apiUrl } from "../../utils/apiUrl";
 const { Option } = Select;
 
 const UpdateProduct = () => {
@@ -18,6 +19,8 @@ const UpdateProduct = () => {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
+  // The stock when the form loaded; the API keeps sales made since then.
+  const [loadedQuantity, setLoadedQuantity] = useState("");
   const [shipping, setShipping] = useState("");
   const [photos, setPhotos] = useState([]);
   const [legacyMissing, setLegacyMissing] = useState(false);
@@ -35,6 +38,7 @@ const UpdateProduct = () => {
       setDescription(data.product.description);
       setPrice(data.product.price);
       setQuantity(data.product.quantity);
+      setLoadedQuantity(data.product.quantity);
       // The Select's option values are "1" (Yes) and "0" (No).
       setShipping(data.product.shipping ? "1" : "0");
       // Products whose category was deleted have none; the admin must pick one.
@@ -72,6 +76,7 @@ const UpdateProduct = () => {
       productData.append("description", description);
       productData.append("price", price);
       productData.append("quantity", quantity);
+      productData.append("expectedQuantity", loadedQuantity);
       appendImages(productData, photos);
       productData.append("category", category);
       productData.append("shipping", shipping);
@@ -86,6 +91,12 @@ const UpdateProduct = () => {
         navigate("/dashboard/admin/products");
       }
     } catch (error) {
+      // Stock changed while editing: show the live number so the admin can recheck it.
+      const live = error?.response?.status === 409 && error.response.data?.quantity;
+      if (Number.isInteger(live)) {
+        setQuantity(live);
+        setLoadedQuantity(live);
+      }
       toast.error(errorMessage(error, "Unable to update product"));
     }
   };
@@ -134,7 +145,7 @@ const UpdateProduct = () => {
               {id && photos.length === 0 && !legacyMissing && (
                 <div className="text-center mb-2">
                   <img
-                    src={`/api/v1/product/product-photo/${id}`}
+                    src={apiUrl(`/api/v1/product/product-photo/${id}`)}
                     alt="Current product"
                     height="160"
                     onError={() => setLegacyMissing(true)}

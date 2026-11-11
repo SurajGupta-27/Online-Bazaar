@@ -6,3 +6,10 @@ export const clientOrigins = () =>
     .split(",")
     .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter(Boolean);
+
+// This API's own public address, for links that must reach the API rather
+// than the store (mail apps' one-click unsubscribe). API_URL when the store
+// and API are hosted apart and Render's RENDER_EXTERNAL_URL isn't right; on
+// Render it is set automatically. With one origin for both, the store's URL.
+export const apiOrigin = () =>
+  (process.env.API_URL || process.env.RENDER_EXTERNAL_URL || clientOrigins()[0]).trim().replace(/\/$/, "");

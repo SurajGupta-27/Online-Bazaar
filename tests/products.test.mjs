@@ -1,5 +1,6 @@
 import { withServer, check, ObjectId } from "./harness.mjs";
 import { adminSetup, PNG, productForm } from "./fixtures.mjs";
+import { startMockCloudinary, cloudinaryEnv } from "./mockCloudinary.mjs";
 
 const form = (fields) => {
   const fd = new FormData();
@@ -144,3 +145,61 @@ await withServer(async ({ api, db }) => {
   const count = await api("GET", "/api/v1/product/product-count");
   check("count reports all products", count.json.total === 30);
 });
+
+// Admin stock edits never undo sales made while the edit form was open: the
+// form sends the stock it loaded (expectedQuantity).
+await withServer(async ({ api, db }) => {
+  const { token, categoryId } = await adminSetup(api, db);
+  const products = db.collection("products");
+  const fields = { name: "Lamp", description: "Desk lamp", price: "500", quantity: "10", category: categoryId };
+  await api("POST", "/api/v1/product/create-product", form(fields), { token });
+  const { _id } = await products.findOne({ name: "Lamp" });
+  const update = (extra) => api("PUT", `/api/v1/product/update-product/${_id}`, form({ ...fields, ...extra }), { token });
+  const stock = async () => (await products.findOne({ _id })).quantity;
+
+  // The admin opens the form at 10; then a customer's order takes 2.
+  await products.updateOne({ _id }, { $inc: { quantity: -2 } });
+
+  const priceOnly = await update({ price: "450", expectedQuantity: "10" });
+  const afterPrice = await products.findOne({ _id });
+  check("unchanged quantity in the form keeps the sale (stock stays 8)", priceOnly.status === 201 && afterPrice.quantity === 8 && afterPrice.price === 450, `${priceOnly.status} stock=${afterPrice.quantity}`);
+
+  const stale = await update({ quantity: "20", expectedQuantity: "10" });
+  check("a new quantity based on stale stock -> 409 with the live stock", stale.status === 409 && stale.json.quantity === 8 && /Stock changed to 8/.test(stale.json.message), stale.text);
+  check("the refused edit changed nothing", (await stock()) === 8);
+
+  const fresh = await update({ quantity: "20", expectedQuantity: "8" });
+  check("a new quantity based on the live stock is saved", fresh.status === 201 && (await stock()) === 20, `${fresh.status} stock=${await stock()}`);
+
+  const bad = await update({ quantity: "5", expectedQuantity: "abc" });
+  check("invalid expectedQuantity -> 400", bad.status === 400 && (await stock()) === 20, bad.text);
+
+  const legacy = await update({ quantity: "7" });
+  check("without expectedQuantity the quantity is written as before", legacy.status === 201 && (await stock()) === 7, legacy.text.slice(0, 120));
+});
+
+// A sale that lands while the admin's photo upload is in flight: the save is
+// conditional on the stock the admin saw, so it is refused, not overwritten.
+const mock = await startMockCloudinary({ port: 9312 });
+try {
+  await withServer(async ({ api, db }) => {
+    const { token, categoryId } = await adminSetup(api, db);
+    const products = db.collection("products");
+    const fields = { name: "Kettle", description: "Steel kettle", price: "900", quantity: "5", category: categoryId };
+    await api("POST", "/api/v1/product/create-product", form(fields), { token });
+    const { _id } = await products.findOne({ name: "Kettle" });
+
+    mock.state.beforeUpload = async () => {
+      mock.state.beforeUpload = null;
+      await products.updateOne({ _id }, { $inc: { quantity: -1 } });
+    };
+    const fd = form({ ...fields, quantity: "50", expectedQuantity: "5" });
+    fd.append("photos", new Blob([PNG], { type: "image/png" }), "k.png");
+    const raced = await api("PUT", `/api/v1/product/update-product/${_id}`, fd, { token });
+    const after = await products.findOne({ _id });
+    check("sale during the upload -> 409, the sale is kept", raced.status === 409 && raced.json.quantity === 4 && after.quantity === 4, `${raced.status} stock=${after.quantity} ${raced.text}`);
+    check("the refused edit's uploaded photo is deleted again", mock.state.uploads.length === 1 && mock.state.destroyed.includes(mock.state.uploads[0].publicId) && after.images.length === 0);
+  }, { env: cloudinaryEnv(mock) });
+} finally {
+  await mock.close();
+}

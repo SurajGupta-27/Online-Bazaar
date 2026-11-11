@@ -71,6 +71,8 @@ export async function startMockCloudinary({ port = 9311 } = {}) {
     }
     if (action !== "upload") return reply(404, { error: { message: "Unknown action" } });
 
+    // Tests can act while an upload is in flight (e.g. change stock mid-save).
+    if (state.beforeUpload) await state.beforeUpload();
     if (state.failNextUploads > 0) {
       state.failNextUploads--;
       return reply(500, { error: { message: "Mock failure" } });

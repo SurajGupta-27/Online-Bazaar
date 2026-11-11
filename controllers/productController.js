@@ -119,6 +119,25 @@ const productFields = (fields) => ({
   shipping: ["1", "true", "yes"].includes(String(fields.shipping).toLowerCase()),
 });
 
+// How an update treats stock, given the form's expectedQuantity (the stock it
+// loaded) and the stock now stored. Without expectedQuantity the form's
+// quantity is written as before. Returns { keep } (leave stock alone),
+// { expected } (write only while stock still equals it), { conflict } or { invalid }.
+const stockEdit = (fields, stored) => {
+  if (isBlank(fields.expectedQuantity)) return {};
+  const expected = Number(fields.expectedQuantity);
+  if (!Number.isInteger(expected) || expected < 0) return { invalid: true };
+  if (Number(fields.quantity) === expected) return { keep: true };
+  return stored === expected ? { expected } : { conflict: true };
+};
+
+const stockConflict = (res, quantity) =>
+  res.status(409).send({
+    success: false,
+    message: `Stock changed to ${quantity} while you were editing. Check the quantity and save again.`,
+    quantity,
+  });
+
 // Lowercase, URL-safe slug that no other product uses ("pen", "pen-2", ...).
 const uniqueSlug = async (name, excludeId) => {
   const base = slugify(name, { lower: true, strict: true }) || "product";
@@ -286,6 +305,15 @@ export const updateProductController = async (req, res) => {
     if (!products) {
       return res.status(404).send({ success: false, message: "Product not found" });
     }
+    // Stock can change while the edit form is open (orders reserve it). The
+    // form sends the stock it loaded as expectedQuantity: unchanged means
+    // "leave stock alone"; a new number is written only if stock still equals
+    // what the admin saw, so a sale is never silently undone.
+    const stock = stockEdit(req.fields, products.quantity);
+    if (stock.invalid) {
+      return res.status(400).send({ success: false, message: "Invalid expected quantity" });
+    }
+    if (stock.conflict) return stockConflict(res, products.quantity);
     const order = imageOrder(req.fields.images, products.images, photos.length);
     if (!order) {
       return res.status(400).send({ success: false, message: "Invalid image list" });
@@ -303,6 +331,8 @@ export const updateProductController = async (req, res) => {
     const keptIds = new Set(kept.map((image) => image.publicId));
     const removed = products.images.filter((image) => !keptIds.has(image.publicId));
     const fields = productFields(req.fields);
+    if (stock.keep) delete fields.quantity;
+    if (stock.expected !== undefined) products.$where = { quantity: stock.expected };
     const before = { price: products.price, quantity: products.quantity };
     products.set({ ...fields, slug: await uniqueSlug(fields.name, req.params.pid) });
     products.images = order.map((entry) => entry.existing || upload.images[entry.upload]);
@@ -312,6 +342,17 @@ export const updateProductController = async (req, res) => {
       await products.save();
     } catch (error) {
       await deleteImages(upload.images.map((image) => image.publicId));
+      // Stock moved during the upload: the conditional save matched nothing.
+      // Mongoose reports that as VersionError when the images array changed too.
+      const noMatch =
+        error instanceof mongoose.Error.DocumentNotFoundError ||
+        error instanceof mongoose.Error.VersionError;
+      if (noMatch && stock.expected !== undefined) {
+        const current = await productModel.findById(req.params.pid).select("quantity");
+        if (current && current.quantity !== stock.expected) {
+          return stockConflict(res, current.quantity);
+        }
+      }
       throw error;
     }
     await deleteImages(removed.map((image) => image.publicId));

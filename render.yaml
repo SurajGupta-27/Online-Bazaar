@@ -1,14 +1,20 @@
-# Render Blueprint: one free web service that runs the API and serves the
-# React build (same origin, so no CORS setup and relative /api/v1 URLs work).
+# Render Blueprint: the Express API as one free web service. The React
+# frontend is deployed separately on Vercel (client/vercel.json) and calls this
+# API cross-origin (REACT_APP_API_URL on Vercel, CLIENT_URL here for CORS).
 # In Render: New > Blueprint > pick this repository. Values marked
 # `sync: false` are secrets Render asks you for; they never live in git.
+#
+# Prefer one service for both? Use `npm ci && npm run build` as the build
+# command, drop SERVE_CLIENT, and add REACT_APP_GOOGLE_CLIENT_ID here: Express
+# then serves the React build on the API's own URL.
 services:
   - type: web
-    name: online-bazaar
+    name: online-bazaar-api
     runtime: node
     plan: free
     branch: main
-    buildCommand: npm ci && npm run build
+    # NODE_ENV=production makes npm ci skip devDependencies (test tools).
+    buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
@@ -19,11 +25,15 @@ services:
         value: production
       - key: DEV_MODE
         value: production
+      # API only: the store is on Vercel.
+      - key: SERVE_CLIENT
+        value: "false"
       # Proxy hops in front of the app; check with GET /api/health (see README).
       - key: TRUST_PROXY
         value: "1"
-      # Your live URL, e.g. https://online-bazaar.onrender.com (used for email
-      # links). Without it, Render's own RENDER_EXTERNAL_URL is used.
+      # Your Vercel URL(s), comma-separated, no trailing slash, e.g.
+      # https://online-bazaar.vercel.app. Allowed by CORS; the first is used
+      # for links in emails. Required for the store to reach the API.
       - key: CLIENT_URL
         sync: false
       - key: MONGO_URL
@@ -50,11 +60,9 @@ services:
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
-      # Google Sign-In: both get the same OAuth client ID. The REACT_APP_ one
-      # is built into the page, so change it and redeploy together.
+      # Google Sign-In: the same OAuth client ID as REACT_APP_GOOGLE_CLIENT_ID
+      # on Vercel.
       - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: REACT_APP_GOOGLE_CLIENT_ID
         sync: false
       - key: AI_PROVIDER
         value: gemini

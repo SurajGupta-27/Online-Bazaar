@@ -81,3 +81,25 @@ test("saved images load into the picker and their order is submitted", async () 
   expect(JSON.parse(body.get("images"))).toEqual(["two", "one"]);
   expect(body.getAll("photos")).toEqual([]);
 });
+
+test("the stock the form loaded is sent, and a stock conflict shows the live number", async () => {
+  renderWithShipping(true);
+  const quantity = await screen.findByPlaceholderText("Quantity in stock");
+  await waitFor(() => expect(quantity).toHaveValue(5));
+  fireEvent.change(quantity, { target: { value: "20" } });
+  axios.put.mockRejectedValueOnce({
+    response: { status: 409, data: { success: false, quantity: 3, message: "Stock changed to 3 while you were editing. Check the quantity and save again." } },
+  });
+  fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+  await waitFor(() => expect(axios.put).toHaveBeenCalledTimes(1));
+  const first = axios.put.mock.calls[0][1];
+  expect(first.get("quantity")).toBe("20");
+  expect(first.get("expectedQuantity")).toBe("5");
+  await waitFor(() => expect(quantity).toHaveValue(3));
+
+  // Saving again is based on the live stock.
+  fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+  await waitFor(() => expect(axios.put).toHaveBeenCalledTimes(2));
+  expect(axios.put.mock.calls[1][1].get("expectedQuantity")).toBe("3");
+  expect(await screen.findByText("Products list")).toBeInTheDocument();
+});
