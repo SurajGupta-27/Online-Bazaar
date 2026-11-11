@@ -16,3 +16,7 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Local assistant settings and notes (kept on disk, never committed)
+CLAUDE.md
+.claude/
